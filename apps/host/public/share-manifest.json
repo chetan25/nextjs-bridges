@@ -1,0 +1,11 @@
+{
+  "name": "host-app",
+  "version": "1.0.0",
+  "baseUrl": "http://localhost:3001",
+  "exposes": {
+    "./Button": {
+      "chunk": "/button.chunk.js",
+      "version": "1.0.0"
+    }
+  }
+}
