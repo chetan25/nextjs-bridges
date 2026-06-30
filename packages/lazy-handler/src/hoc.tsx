@@ -1,33 +1,47 @@
 'use client';
-import { type ComponentType } from 'react';
-import { useLazyHandler } from './use-lazy-handler';
-import type { Loader, LazyHandlerOptions } from './types';
+import { useRef, useCallback, type ComponentType } from 'react';
+import type { Loader } from './types';
 
 type HandlerMap = Record<string, Loader>;
 
-// Wraps an existing component, replacing the named event props with lazy stubs.
-// The wrapped component receives the same props — callers don't need to change anything.
+// withLazyHandlers wires lazy loading via React props (not native addEventListener),
+// so it works with any component — no forwardRef required.
 export function withLazyHandlers<P extends object>(
   Component: ComponentType<P>,
   handlerMap: HandlerMap,
-  options?: Omit<LazyHandlerOptions, 'event'>,
 ): ComponentType<P> {
   const firstEvent = Object.keys(handlerMap)[0] ?? 'click';
   const firstLoader = handlerMap[firstEvent];
+  // Map event name 'click' → React prop name 'onClick'
+  const propName = `on${firstEvent.charAt(0).toUpperCase()}${firstEvent.slice(1)}`;
 
   function LazyWrapped(props: P) {
-    const [ref, stub] = useLazyHandler(
-      firstLoader ?? (() => Promise.resolve({ default: () => {} })),
-      { event: firstEvent as keyof HTMLElementEventMap, ...options },
-    );
+    // handlerRef holds the resolved handler after first load
+    const handlerRef = useRef<((...args: unknown[]) => unknown) | null>(null);
+    const loadingRef = useRef(false);
+    // Keep loader ref current without re-creating the stub on loader identity changes
+    const loaderRef = useRef(firstLoader);
+    loaderRef.current = firstLoader;
 
-    // Only replace the primary event's prop — leave all other props untouched.
-    // Setting non-primary props to undefined would override the wrapped component's
-    // own handlers, silently disabling them.
-    const propName = `on${firstEvent.charAt(0).toUpperCase()}${firstEvent.slice(1)}`;
-    const handlerProps: Record<string, unknown> = { [propName]: stub };
+    const stub = useCallback((...args: unknown[]) => {
+      if (handlerRef.current) {
+        return handlerRef.current(...args);
+      }
+      if (loadingRef.current) return;
+      loadingRef.current = true;
+      loaderRef.current()
+        .then((mod) => {
+          handlerRef.current = mod.default as (...a: unknown[]) => unknown;
+          loadingRef.current = false;
+          return handlerRef.current(...args);
+        })
+        .catch(() => {
+          loadingRef.current = false;
+        });
+    }, []);
 
-    return <Component ref={ref as never} {...props} {...handlerProps} />;
+    const handlerProps = { [propName]: stub } as Partial<P>;
+    return <Component {...props} {...handlerProps} />;
   }
 
   LazyWrapped.displayName = `withLazyHandlers(${Component.displayName ?? Component.name})`;
