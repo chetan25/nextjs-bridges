@@ -8,7 +8,7 @@ export interface ShareManifest {
   version: string;
   baseUrl: string;
   exposes: Record<string, ShareManifestEntry>;
-  shared?: Record<string, { version: string; singleton?: boolean }>;
+  shared?: Record<string, { version: string; singleton?: boolean; external?: boolean }>;
 }
 
 /**
