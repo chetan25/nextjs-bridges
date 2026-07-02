@@ -11,7 +11,7 @@
 ## Global Constraints
 
 - Any component file that ends up bundled into a `@bridge/share` chunk (i.e. anything under `apps/host/src/components/**` or `apps/storefront/src/components/**`) must build markup with `createElement` from `'react'`, never JSX. These files compile through `apps/host/tsup.config.ts` / `apps/storefront/tsup.config.ts`'s esbuild pipeline with the react-alias mechanism from the prior shared-dep-externalization work; `apps/host/src/components/button.tsx` already establishes this pattern and is verified working. (Files under `apps/web/**` are ordinary Next.js Client Components compiled by Next's own toolchain and use normal JSX.)
-- Inside any chunk-bundled component, only import `useLazyHandler` from `@bridge/lazy-handler` — never `Interactive` or `withLazyHandlers`. Both of those compile to calls into `react/jsx-runtime` (confirmed in `packages/lazy-handler/dist/index.mjs`), a module specifier the project's existing react-alias shims do not cover. `useLazyHandler` itself contains no JSX and has no such import.
+- Inside any chunk-bundled component, import `useLazyHandler` only from the dedicated subpath `@bridge/lazy-handler/use-lazy-handler` — never from the package's main `.` entry, and never `Interactive`/`withLazyHandlers`. The main entry's compiled bundle (`packages/lazy-handler/dist/index.mjs`) contains `Interactive`/`withLazyHandlers`, which import `react/jsx-runtime` at the top of that file; esbuild must resolve every top-level import while parsing a file, before any tree-shaking happens, and this project's `react` alias does prefix-based rewriting for unlisted subpaths (`react/jsx-runtime` → `<react-shim-path>/jsx-runtime`, an invalid file path since the shim is a single file, not a directory) — so merely avoiding a reference to `Interactive` is not enough; the JSX-importing code must not be present in the parsed file at all. Task 3 adds a `./use-lazy-handler` subpath export to `packages/lazy-handler` (built from the already-separate `src/use-lazy-handler.ts`, which contains no JSX) specifically so consumers can import the hook without ever parsing `Interactive`'s code.
 - `apps/host`'s existing `./Button` expose and the existing `/demo/lazy-handler`, `/demo/hydration`, and `/demo/share` pages must keep working unmodified throughout this plan.
 - `apps/storefront` mirrors `apps/host`'s existing file conventions (`package.json` script names, `tsup.config.ts`'s shim-aliasing logic, `next.config.ts`'s `shareConfig()` usage) exactly, so it participates in the shared-dep-externalization mechanism the same way `apps/host` does.
 - Cross-widget cart sync uses a plain `window` `CustomEvent` named `'bridge:cart:add'` with a duplicated (not shared/imported) `{ id: string; name: string; price: number }` payload shape on both the dispatching and listening sides — no new package or shared type.
@@ -35,9 +35,11 @@
 | `apps/storefront/src/components/recommendations-team/popular-products-panel.tsx` | Create (stub, then replace) | Recommendations team's exposed widget |
 | `apps/storefront/src/components/shared/product-card.tsx` | Create | Shared placeholder product card + lazy Add to Cart |
 | `apps/storefront/src/components/shared/handlers/add-to-cart.ts` | Create | Lazily-loaded handler; dispatches `bridge:cart:add` |
+| `packages/lazy-handler/tsup.config.ts` | Modify | Add a second build entry for `src/use-lazy-handler.ts` |
+| `packages/lazy-handler/package.json` | Modify | Add `./use-lazy-handler` subpath export |
 | `apps/host/package.json` | Modify | Add `@bridge/lazy-handler` dependency |
 | `apps/host/next.config.ts` | Modify | Add `./CartWidget` to `exposes` |
-| `apps/host/tsup.config.ts` | Modify | Add `cart-widget` entry, extend `noExternal` |
+| `apps/host/tsup.config.ts` | Modify | Add `cartwidget` entry, extend `noExternal` |
 | `apps/host/src/components/checkout-team/cart-widget.tsx` | Create | Checkout team's cart icon/dropdown; listens for `bridge:cart:add` |
 | `apps/host/src/components/checkout-team/handlers/start-checkout.ts` | Create | Lazily-loaded "Proceed to Checkout" handler |
 | `turbo.json` | Modify | Add `storefront#build` ordering override |
@@ -409,26 +411,72 @@ git commit -m "build: order apps/storefront's build after apps/web's"
 ## Task 3: `ProductCard` + lazy Add to Cart, wired into `HomeWidget`
 
 **Files:**
-- Modify: `apps/storefront/package.json`, `apps/storefront/tsup.config.ts`, `apps/storefront/src/components/home-team/home-widget.tsx`
+- Modify: `packages/lazy-handler/tsup.config.ts`, `packages/lazy-handler/package.json`, `apps/storefront/package.json`, `apps/storefront/tsup.config.ts`, `apps/storefront/src/components/home-team/home-widget.tsx`
 - Create: `apps/storefront/src/components/shared/product-card.tsx`, `apps/storefront/src/components/shared/handlers/add-to-cart.ts`
 
 **Interfaces:**
-- Consumes: `useLazyHandler` from `@bridge/lazy-handler`.
+- Consumes: `useLazyHandler` from the new `@bridge/lazy-handler/use-lazy-handler` subpath (not the package's main `.` entry).
 - Produces: `export function ProductCard({ id, name, price, color }: ProductCardProps)`; default-exported `addToCart(event: Event): void` in `add-to-cart.ts`, which dispatches `window.dispatchEvent(new CustomEvent('bridge:cart:add', { detail: { id, name, price } }))`.
 
-- [ ] **Step 1: Add the `@bridge/lazy-handler` dependency**
+**Why a new subpath export is needed first:** `@bridge/lazy-handler`'s main entry (`packages/lazy-handler/dist/index.mjs`) bundles `useLazyHandler`, `Interactive`, and `withLazyHandlers` into one file; the latter two import `react/jsx-runtime`. Any chunk-bundled component that imports even just `useLazyHandler` from the main entry forces esbuild to resolve that top-level `react/jsx-runtime` import while parsing the file (before tree-shaking can drop the unused code) — and this project's `react` alias does prefix-based rewriting for unlisted subpaths of `'react'`, turning `react/jsx-runtime` into `<react-shim-file-path>/jsx-runtime`, an invalid path since the shim is a single file, not a directory. This is a hard build failure, not something `splitting: true` or careful imports alone can fix. `packages/lazy-handler/src/use-lazy-handler.ts` already exists as its own file containing zero JSX — Steps 1–2 below just expose it as its own build entry and package export so it can be imported without ever pulling `Interactive`'s code into the parsed module graph.
+
+- [ ] **Step 1: Add a build entry for `use-lazy-handler.ts`**
+
+```ts
+// packages/lazy-handler/tsup.config.ts — change:
+entry: ['src/index.ts'],
+// to:
+entry: ['src/index.ts', 'src/use-lazy-handler.ts'],
+```
+
+- [ ] **Step 2: Add the subpath export and verify**
+
+```jsonc
+// packages/lazy-handler/package.json — change "exports" from:
+"exports": {
+  ".": {
+    "types": "./dist/index.d.ts",
+    "import": "./dist/index.mjs",
+    "require": "./dist/index.js"
+  }
+},
+// to:
+"exports": {
+  ".": {
+    "types": "./dist/index.d.ts",
+    "import": "./dist/index.mjs",
+    "require": "./dist/index.js"
+  },
+  "./use-lazy-handler": {
+    "types": "./dist/use-lazy-handler.d.ts",
+    "import": "./dist/use-lazy-handler.mjs",
+    "require": "./dist/use-lazy-handler.js"
+  }
+},
+```
+
+Run: `pnpm --filter @bridge/lazy-handler build`
+Expected: succeeds; `packages/lazy-handler/dist/use-lazy-handler.mjs`, `.js`, and `.d.ts` are all created alongside the existing `index.*` files.
+
+Run: `grep -c "jsx-runtime" packages/lazy-handler/dist/use-lazy-handler.mjs`
+Expected: `0` — confirms this subpath's compiled output never references `react/jsx-runtime`, unlike the main entry.
+
+Run: `pnpm --filter @bridge/lazy-handler test`
+Expected: PASS (15/15) — confirms the existing test suite (which imports from the main `.` entry) is unaffected by adding a second build entry.
+
+- [ ] **Step 3: Add the `@bridge/lazy-handler` dependency to `apps/storefront`**
 
 ```json
 // apps/storefront/package.json — add to "dependencies", alongside "@bridge/share"
 "@bridge/lazy-handler": "workspace:*",
 ```
 
-- [ ] **Step 2: Install**
+- [ ] **Step 4: Install**
 
 Run: `pnpm install`
 Expected: succeeds, no errors.
 
-- [ ] **Step 3: Extend `tsup.config.ts`'s `noExternal`**
+- [ ] **Step 5: Extend `tsup.config.ts`'s `noExternal`**
 
 ```ts
 // apps/storefront/tsup.config.ts — change this line:
@@ -437,9 +485,9 @@ noExternal: [/react/],
 noExternal: [/react/, '@bridge/lazy-handler'],
 ```
 
-`@bridge/lazy-handler` is a `package.json` dependency, so tsup would otherwise leave a bare `import ... from "@bridge/lazy-handler"` unresolved in the output (tsup's default is to externalize any declared dependency). This forces it to be bundled directly into the chunk instead — it is never aliased/shimmed like react/react-dom, since it isn't a singleton concern.
+`@bridge/lazy-handler` is a `package.json` dependency, so tsup would otherwise leave a bare `import ... from "@bridge/lazy-handler/use-lazy-handler"` unresolved in the output (tsup's default is to externalize any declared dependency). This forces it to be bundled directly into the chunk instead — it is never aliased/shimmed like react/react-dom, since it isn't a singleton concern. The `noExternal` entry matches by package name regardless of which subpath is imported.
 
-- [ ] **Step 4: Create the add-to-cart handler**
+- [ ] **Step 6: Create the add-to-cart handler**
 
 ```ts
 // apps/storefront/src/components/shared/handlers/add-to-cart.ts
@@ -474,12 +522,12 @@ export default function addToCart(event: Event): void {
 }
 ```
 
-- [ ] **Step 5: Create `ProductCard`**
+- [ ] **Step 7: Create `ProductCard`**
 
 ```tsx
 // apps/storefront/src/components/shared/product-card.tsx
 import { createElement } from 'react';
-import { useLazyHandler } from '@bridge/lazy-handler';
+import { useLazyHandler } from '@bridge/lazy-handler/use-lazy-handler';
 
 export interface ProductCardProps {
   id: string;
@@ -488,9 +536,10 @@ export interface ProductCardProps {
   color?: string;
 }
 
-// Chunk-bundled component — uses createElement (not JSX) and only
-// useLazyHandler (not <Interactive>/withLazyHandlers) from @bridge/lazy-handler.
-// See this plan's Global Constraints for why.
+// Chunk-bundled component — uses createElement (not JSX). Imports
+// useLazyHandler from the dedicated './use-lazy-handler' subpath, never the
+// package's main entry (which also contains Interactive/withLazyHandlers and
+// their react/jsx-runtime import) — see this plan's Global Constraints for why.
 export function ProductCard({ id, name, price, color = '#e0e7ff' }: ProductCardProps) {
   const [ref] = useLazyHandler<HTMLButtonElement>(
     () => import('./handlers/add-to-cart'),
@@ -537,7 +586,7 @@ export function ProductCard({ id, name, price, color = '#e0e7ff' }: ProductCardP
 }
 ```
 
-- [ ] **Step 6: Replace `home-widget.tsx`'s stub with the real widget**
+- [ ] **Step 8: Replace `home-widget.tsx`'s stub with the real widget**
 
 ```tsx
 // apps/storefront/src/components/home-team/home-widget.tsx — replace entire file
@@ -599,27 +648,27 @@ const mount: MountFunction = (container, props) => {
 export default mount;
 ```
 
-- [ ] **Step 7: Build and verify code-splitting produced a separate handler chunk**
+- [ ] **Step 9: Build and verify code-splitting produced a separate handler chunk**
 
 Run: `pnpm --filter storefront build:chunks`
 Expected: succeeds. Then run: `ls apps/storefront/public`
 Expected: alongside `homewidget.chunk.js`, `popularproductspanel.chunk.js`, and `share-manifest.json`, at least one additional file matching `add-to-cart*.chunk.js` (tsup/esbuild code-splits dynamic `import()` targets into separate output files by default for ESM format, and `outExtension` applies the same `.chunk.js` suffix to every emitted file, so this split file also matches the existing CORS header pattern in `next.config.ts`). If no such file appears, add `splitting: true` to the `defineConfig({...})` object in `apps/storefront/tsup.config.ts` and rerun this step.
 
-- [ ] **Step 8: Verify no unaliased `react/jsx-runtime` leaked into the bundled chunk**
+- [ ] **Step 10: Verify no unaliased `react/jsx-runtime` leaked into the bundled chunk**
 
 Run: `grep -c "jsx-runtime" apps/storefront/public/homewidget.chunk.js`
-Expected: `0`. If nonzero, check that `product-card.tsx` and `add-to-cart.ts` only import `useLazyHandler` (not `Interactive`/`withLazyHandlers`) from `@bridge/lazy-handler`.
+Expected: `0`. This should hold architecturally now (Steps 1–2 ensure `useLazyHandler` is imported from a subpath whose compiled output never references `react/jsx-runtime` in the first place) — if nonzero, check that `product-card.tsx` imports from `@bridge/lazy-handler/use-lazy-handler`, not the package's main `.` entry.
 
-- [ ] **Step 9: Type-check**
+- [ ] **Step 11: Type-check**
 
 Run: `pnpm --filter storefront type-check`
 Expected: PASS
 
-- [ ] **Step 10: Commit**
+- [ ] **Step 12: Commit**
 
 ```bash
-git add apps/storefront/package.json apps/storefront/tsup.config.ts apps/storefront/src/components/home-team/home-widget.tsx apps/storefront/src/components/shared pnpm-lock.yaml
-git commit -m "feat(storefront): add ProductCard and lazy-loaded add-to-cart handler, wire into HomeWidget"
+git add packages/lazy-handler/tsup.config.ts packages/lazy-handler/package.json apps/storefront/package.json apps/storefront/tsup.config.ts apps/storefront/src/components/home-team/home-widget.tsx apps/storefront/src/components/shared pnpm-lock.yaml
+git commit -m "feat(lazy-handler,storefront): add use-lazy-handler subpath export; wire ProductCard and lazy Add to Cart into HomeWidget"
 ```
 
 ---
@@ -792,7 +841,7 @@ export default function startCheckout(event: Event): void {
 // apps/host/src/components/checkout-team/cart-widget.tsx
 import { createElement, useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { useLazyHandler } from '@bridge/lazy-handler';
+import { useLazyHandler } from '@bridge/lazy-handler/use-lazy-handler';
 
 interface CartItem {
   id: string;
@@ -961,7 +1010,7 @@ Expected: alongside `button.chunk.js`, `cartwidget.chunk.js`, and `share-manifes
 - [ ] **Step 9: Verify no unaliased `react/jsx-runtime` leaked into the bundled chunk**
 
 Run: `grep -c "jsx-runtime" apps/host/public/cartwidget.chunk.js`
-Expected: `0`. If nonzero, check that `cart-widget.tsx` only imports `useLazyHandler` (not `Interactive`/`withLazyHandlers`) from `@bridge/lazy-handler`.
+Expected: `0`. If nonzero, check that `cart-widget.tsx` imports `useLazyHandler` from `@bridge/lazy-handler/use-lazy-handler` (the dedicated subpath added in Task 3), not the package's main `.` entry.
 
 - [ ] **Step 10: Run the existing `/demo/share` page's expectations still hold**
 
