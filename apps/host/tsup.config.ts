@@ -11,7 +11,14 @@ const decisions = loadSharedDepDecisions(
 );
 
 export default defineConfig({
-  entry: { button: 'src/components/button.tsx' },
+  entry: {
+    button: 'src/components/button.tsx',
+    // Key must match slugifyExpose('./CartWidget') (strips './', lowercases,
+    // no hyphen) from packages/share/src/next-config-helper.ts:7-9 — the
+    // manifest's chunk path is derived from the expose key independently of
+    // this entry key, so 'cart-widget' here would silently mismatch it.
+    cartwidget: 'src/components/checkout-team/cart-widget.tsx',
+  },
   format: ['esm'],
   outDir: 'public',
   outExtension: () => ({ js: '.chunk.js' }),
@@ -24,7 +31,7 @@ export default defineConfig({
   // package.json dependency as external) — unchanged from before this plan.
   // Which *implementation* gets bundled (the real package, or a shim reading
   // window.__bridgeShared) is controlled entirely by esbuildOptions.alias below.
-  noExternal: [/react/],
+  noExternal: [/react/, '@bridge/lazy-handler'],
   esbuildOptions(options) {
     options.alias = {
       ...options.alias,

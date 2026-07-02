@@ -23,6 +23,7 @@ export default shareConfig({
   baseUrl: 'http://localhost:3001',
   exposes: {
     './Button': './src/components/button.tsx',
+    './CartWidget': './src/components/checkout-team/cart-widget.tsx',
   },
   shared: { react: {}, 'react-dom': {} },
   sharedContractPath: '../../packages/share/shared-contract.json',
