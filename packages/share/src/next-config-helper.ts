@@ -2,6 +2,7 @@ import { writeFileSync, mkdirSync, readFileSync } from 'fs';
 import { join, resolve, dirname } from 'path';
 import type { NextConfig } from 'next';
 import type { ShareManifest, ShareConfig } from './types';
+import { loadSharedDepDecisions, loadOwnVersions } from './shared-dep-resolver';
 
 function slugifyExpose(key: string): string {
   // './Button' → 'button', './components/Card' → 'components-card'
@@ -20,7 +21,7 @@ function slugifyExpose(key: string): string {
  * { "scripts": { "prebuild": "node -e \"require('./share.config.js')\"" } }
  */
 export function generateShareManifest(
-  config: ShareConfig & { outputDir?: string },
+  config: ShareConfig & { outputDir?: string; sharedContractPath?: string; ownPackageJsonPath?: string },
 ): ShareManifest {
   const {
     name,
@@ -29,7 +30,26 @@ export function generateShareManifest(
     exposes,
     shared,
     outputDir,
+    sharedContractPath,
+    ownPackageJsonPath = './package.json',
   } = config;
+
+  let sharedEntries: ShareManifest['shared'];
+  if (shared) {
+    const ownVersions = loadOwnVersions(shared, resolve(ownPackageJsonPath));
+    const decisions = sharedContractPath
+      ? loadSharedDepDecisions(shared, ownVersions, resolve(sharedContractPath))
+      : Object.fromEntries(
+          Object.keys(shared).map((dep) => [dep, { external: false, ownVersion: ownVersions[dep] }]),
+        );
+
+    sharedEntries = Object.fromEntries(
+      Object.entries(shared).map(([dep, cfg]) => [
+        dep,
+        { version: decisions[dep].ownVersion, external: decisions[dep].external, ...cfg },
+      ]),
+    );
+  }
 
   const manifest: ShareManifest = {
     name,
@@ -41,16 +61,7 @@ export function generateShareManifest(
         { chunk: `/${slugifyExpose(key)}.chunk.js`, version },
       ]),
     ),
-    ...(shared
-      ? {
-          shared: Object.fromEntries(
-            Object.entries(shared).map(([pkg, cfg]) => [
-              pkg,
-              { version: '0.0.0', ...cfg },
-            ]),
-          ),
-        }
-      : {}),
+    ...(sharedEntries ? { shared: sharedEntries } : {}),
   };
 
   if (outputDir !== undefined) {
