@@ -12,8 +12,8 @@ const decisions = loadSharedDepDecisions(
 
 export default defineConfig({
   entry: {
-    'home-widget': 'src/components/home-team/home-widget.tsx',
-    'popular-products-panel': 'src/components/recommendations-team/popular-products-panel.tsx',
+    homewidget: 'src/components/home-team/home-widget.tsx',
+    popularproductspanel: 'src/components/recommendations-team/popular-products-panel.tsx',
   },
   format: ['esm'],
   outDir: 'public',
