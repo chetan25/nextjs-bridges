@@ -20,7 +20,7 @@ declare global {
  */
 export function BridgeSharedDepsProvider({ children }: { children: ReactNode }) {
   const initialized = useRef(false);
-  if (!initialized.current) {
+  if (!initialized.current && typeof window !== 'undefined') {
     window.__bridgeShared = {
       react: React,
       'react-dom': ReactDOM,
