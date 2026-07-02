@@ -28,6 +28,8 @@ Next.js 15+ Turbopack removed Webpack Module Federation and introduced a stricte
 
 All three are `'use client'` libraries. They are side-effect-free on the server and tree-shakeable.
 
+> **See all three working together:** `apps/web`'s `/demo/ecommerce` page composes a small multi-team storefront — a Shell-owned header/footer, a Checkout team's cart widget, and a Home/Recommendations team's product widgets — using `@bridge/share` to load them, `@bridge/hydration` to defer their mount, and `@bridge/lazy-handler` to defer their interaction JS. Run `pnpm dev` from the repo root and open `http://localhost:3000/demo/ecommerce`.
+
 ---
 
 ## `@bridge/lazy-handler`
@@ -387,7 +389,8 @@ generateShareManifest({
 ```
 apps/
   web/          Next.js 15 demo app (all three packages exercised)
-  host/         Second Next.js app (serves shared components for @bridge/share)
+  host/         Second Next.js app — Checkout team (serves ./Button and ./CartWidget)
+  storefront/   Third Next.js app — Home + Recommendations teams (serves ./HomeWidget, ./PopularProductsPanel)
 packages/
   lazy-handler/ @bridge/lazy-handler source
   hydration/    @bridge/hydration source
