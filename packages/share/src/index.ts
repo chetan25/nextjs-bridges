@@ -5,3 +5,4 @@ export { checkVersion } from './version-check';
 export { useRemoteComponent } from './use-remote-component';
 export { RemoteComponent } from './remote-component';
 export { RemoteErrorBoundary } from './remote-error-boundary';
+export { BridgeSharedDepsProvider } from './bridge-shared-deps-provider';
