@@ -13,6 +13,12 @@ vi.mock('../src/chunk-loader', () => ({
 import { loadManifest } from '../src/manifest-loader';
 import { loadChunk } from '../src/chunk-loader';
 
+declare global {
+  interface Window {
+    __bridgeShared?: Record<string, unknown>;
+  }
+}
+
 const mockManifest = {
   name: 'host-app',
   version: '1.0.0',
@@ -132,6 +138,22 @@ describe('useRemoteComponent', () => {
     await waitFor(() => {
       expect(result.current.error?.message).toContain('Version mismatch');
     });
+  });
+
+  it('throws a version-mismatch error when a shared dep has drifted', async () => {
+    window.__bridgeShared = { react: { version: '19.0.0' } };
+    vi.mocked(loadManifest).mockResolvedValue({
+      ...mockManifest,
+      shared: { react: { version: '18.3.0', external: true } },
+    });
+
+    const { result } = renderHook(() =>
+      useRemoteComponent('http://example.com/manifest.json', './Button'),
+    );
+
+    await waitFor(() => expect(result.current.error).not.toBeNull());
+    expect(result.current.error?.message).toContain('Version mismatch');
+    window.__bridgeShared = undefined;
   });
 
   it('does not update state after unmount', async () => {

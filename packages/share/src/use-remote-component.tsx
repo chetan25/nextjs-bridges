@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { loadManifest } from './manifest-loader';
 import { loadChunk } from './chunk-loader';
 import { checkVersion } from './version-check';
+import { assertSharedDepsAvailable } from './shared-dep-guard';
 import type { RemoteComponentState } from './types';
 
 export function useRemoteComponent(
@@ -33,6 +34,8 @@ export function useRemoteComponent(
         }
 
         if (requiredVersion) checkVersion(entry.version, requiredVersion);
+
+        assertSharedDepsAvailable(manifest.shared);
 
         const chunkUrl = entry.chunk.startsWith('http')
           ? entry.chunk
