@@ -1,3 +1,4 @@
+import { readFileSync } from 'fs';
 import { parseSemVer } from './version-check';
 
 export interface SharedDepDecision {
@@ -41,4 +42,38 @@ export function resolveSharedDeps(
   }
 
   return result;
+}
+
+export function readContract(contractPath: string): Record<string, string> {
+  try {
+    const raw = JSON.parse(readFileSync(contractPath, 'utf-8'));
+    return raw && typeof raw === 'object' ? (raw as Record<string, string>) : {};
+  } catch {
+    return {};
+  }
+}
+
+export function loadSharedDepDecisions(
+  shared: Record<string, { singleton?: boolean }>,
+  ownVersions: Record<string, string>,
+  contractPath: string,
+): Record<string, SharedDepDecision> {
+  return resolveSharedDeps(shared, ownVersions, readContract(contractPath));
+}
+
+/**
+ * Reads each shared dependency's version out of a package.json's
+ * `dependencies` field. Shared by generateShareManifest() (Task 6) and
+ * apps/host/tsup.config.ts (Task 10) so neither duplicates this glue.
+ */
+export function loadOwnVersions(
+  shared: Record<string, unknown>,
+  ownPackageJsonPath: string,
+): Record<string, string> {
+  const ownPkg = JSON.parse(readFileSync(ownPackageJsonPath, 'utf-8')) as {
+    dependencies?: Record<string, string>;
+  };
+  return Object.fromEntries(
+    Object.keys(shared).map((dep) => [dep, ownPkg.dependencies?.[dep] ?? '0.0.0']),
+  );
 }
