@@ -18,4 +18,11 @@ export default defineConfig([
     external: ['next', 'react', 'react-dom'],
     platform: 'node',
   },
+  {
+    entry: ['src/shared-dep-resolver.ts'],
+    format: ['esm', 'cjs'],
+    dts: true,
+    sourcemap: true,
+    platform: 'node',
+  },
 ]);
