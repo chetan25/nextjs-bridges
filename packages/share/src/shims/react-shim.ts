@@ -27,6 +27,7 @@ export const {
   isValidElement,
   lazy,
   memo,
+  startTransition,
   useCallback,
   useContext,
   useDebugValue,

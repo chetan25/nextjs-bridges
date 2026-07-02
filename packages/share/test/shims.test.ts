@@ -31,6 +31,11 @@ describe('shims', () => {
     expect(shim.createElement).toBe(RealReact.createElement);
   });
 
+  it('react-shim re-exports startTransition', async () => {
+    const shim = await import('../src/shims/react-shim');
+    expect(shim.startTransition).toBe(RealReact.startTransition);
+  });
+
   it('react-shim throws a descriptive error when window.__bridgeShared.react is missing', async () => {
     window.__bridgeShared = {};
     await expect(import('../src/shims/react-shim')).rejects.toThrow('window.__bridgeShared.react');
