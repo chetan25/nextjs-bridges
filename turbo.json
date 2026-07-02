@@ -5,6 +5,10 @@
       "dependsOn": ["^build"],
       "outputs": [".next/**", "dist/**", "!dist/**/*.map"]
     },
+    "host#build": {
+      "dependsOn": ["^build", "web#build"],
+      "outputs": [".next/**", "dist/**", "!dist/**/*.map"]
+    },
     "dev": {
       "cache": false,
       "persistent": true
