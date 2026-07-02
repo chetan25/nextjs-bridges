@@ -7,5 +7,15 @@
       "chunk": "/button.chunk.js",
       "version": "1.0.0"
     }
+  },
+  "shared": {
+    "react": {
+      "version": "^18.3.0",
+      "external": true
+    },
+    "react-dom": {
+      "version": "^18.3.0",
+      "external": true
+    }
   }
 }
