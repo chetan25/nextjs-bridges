@@ -30,6 +30,15 @@ This is deliberately **not** a general reimplementation of Webpack Module Federa
 - Runtime renegotiation or dual-variant (bundled + externalized) chunk builds selected at load time.
 - Sharing dependencies across chunks mounted into different pages/origins (this only works because `apps/web` and the mounted component share one page/JS realm).
 
+## SSR and Server Components compatibility
+
+This mechanism is client-only by construction, and that's consistent with — not a regression from — how `@bridge/share` already works today:
+
+- `remote-component.tsx` and `use-remote-component.tsx` both already carry `'use client'`, and the actual `mount()` call happens inside a `useEffect`. There is no server-rendered markup for exposed components today; the host page renders `fallback` during SSR and hydration, then the real component mounts client-side afterward. Nothing about shared-dep externalization changes this — `window.__bridgeShared` only ever needs to exist where the rest of the mechanism already runs: in the browser, post-hydration.
+- `useRemoteComponent()` / `<RemoteComponent>` must always be used inside a Client Component boundary, same requirement as before this proposal. A true Server Component cannot call hooks or touch the DOM regardless of whether any dependency is shared.
+- The shell-side bootstrap (section 6) must be its own `'use client'` component (`<BridgeSharedDepsProvider>`), not module-scope code in `apps/web/app/layout.tsx` — that layout is a Server Component by default in the App Router, and Server Component module bodies never ship as executable client JS, only their rendered output does. Putting the `window.__bridgeShared` assignment there directly would silently never run.
+- **Explicitly out of scope:** true SSR/streaming of an exposed component's markup (the shell's server rendering the remote's actual HTML rather than a loading fallback) is a materially larger feature — it would require the exposing app to also render server-side and stream fragments into the shell's response, which this repo's architecture doesn't do today. This proposal neither adds nor removes that capability; it only affects how a chunk is built and what it references once it does mount client-side.
+
 ## Architecture
 
 ```
@@ -170,15 +179,43 @@ Extends the existing `shared` field (already present in `types.ts`) to record th
 }
 ```
 
-### 6. Shell-side runtime bootstrap — `apps/web/app/layout.tsx`
+### 6. Shell-side runtime bootstrap — `<BridgeSharedDepsProvider>`, new Client Component
 
-```ts
-if (typeof window !== 'undefined') {
-  (window as any).__bridgeShared = { react: React, 'react-dom': ReactDOM };
+`apps/web/app/layout.tsx` has no `'use client'` directive — it's a Server Component (the App Router default), and Server Component module code never ships as executable client JS; only its rendered output does. So the bootstrap cannot live directly in the layout's module scope — it must be a dedicated Client Component, rendered from the (Server Component) layout:
+
+```tsx
+// packages/share/src/bridge-shared-deps-provider.tsx
+'use client';
+import { useRef } from 'react';
+import * as React from 'react';
+import * as ReactDOM from 'react-dom';
+
+export function BridgeSharedDepsProvider({ children }: { children: React.ReactNode }) {
+  const initialized = useRef(false);
+  if (!initialized.current) {
+    (window as any).__bridgeShared = { react: React, 'react-dom': ReactDOM };
+    initialized.current = true;
+  }
+  return <>{children}</>;
 }
 ```
 
-Must run before the first `useRemoteComponent()` call can resolve. Since this is a synchronous module-level assignment in the root layout (which renders before any page content, including any component that could call `useRemoteComponent`), ordering is guaranteed within `apps/web`'s own render — no async race exists as long as this stays in a layout/root-level module rather than a lazy-loaded one.
+```tsx
+// apps/web/app/layout.tsx (Server Component, unchanged directive-wise)
+import { BridgeSharedDepsProvider } from '@bridge/share';
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en">
+      <body>
+        <BridgeSharedDepsProvider>{children}</BridgeSharedDepsProvider>
+      </body>
+    </html>
+  );
+}
+```
+
+The assignment runs during this component's client-side render, which — because it's mounted at the root, wrapping `children` — happens before any descendant Client Component's own `useEffect`s run (React commits parent render bodies before child effects fire), so `window.__bridgeShared` is guaranteed to be set before `useRemoteComponent`'s effect (which runs in a descendant) executes. No async race exists as long as `BridgeSharedDepsProvider` stays mounted above every usage of `RemoteComponent`/`useRemoteComponent` in the tree.
 
 ### 7. Runtime guard — `chunk-loader.ts` / `remote-component.tsx`
 
