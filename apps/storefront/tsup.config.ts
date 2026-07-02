@@ -23,7 +23,7 @@ export default defineConfig({
   sourcemap: false,
   dts: false,
   clean: false,
-  noExternal: [/react/],
+  noExternal: [/react/, '@bridge/lazy-handler'],
   esbuildOptions(options) {
     options.alias = {
       ...options.alias,

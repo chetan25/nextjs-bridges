@@ -87,6 +87,9 @@ importers:
 
   apps/storefront:
     dependencies:
+      '@bridge/lazy-handler':
+        specifier: workspace:*
+        version: link:../../packages/lazy-handler
       '@bridge/share':
         specifier: workspace:*
         version: link:../../packages/share
