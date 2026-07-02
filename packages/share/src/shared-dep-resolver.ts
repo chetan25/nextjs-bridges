@@ -1,19 +1,9 @@
+import { parseSemVer } from './version-check';
+
 export interface SharedDepDecision {
   external: boolean;
   ownVersion: string;
   contractVersion?: string;
-}
-
-interface SemVer {
-  major: number;
-  minor: number;
-  patch: number;
-}
-
-function parseVersion(raw: string): SemVer {
-  const clean = raw.replace(/^[\^~]/, '').replace(/[-+].*$/, '');
-  const [major = 0, minor = 0, patch = 0] = clean.split('.').map(Number);
-  return { major, minor, patch };
 }
 
 /**
@@ -43,8 +33,8 @@ export function resolveSharedDeps(
       continue;
     }
 
-    const own = parseVersion(ownRaw);
-    const provided = parseVersion(contractRaw);
+    const own = parseSemVer(ownRaw);
+    const provided = parseSemVer(contractRaw);
     const external = own.major === provided.major && own.minor <= provided.minor;
 
     result[dep] = { external, ownVersion: ownRaw, contractVersion: contractRaw };

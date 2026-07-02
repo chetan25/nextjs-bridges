@@ -1,10 +1,10 @@
-interface SemVer {
+export interface SemVer {
   major: number;
   minor: number;
   patch: number;
 }
 
-function parseSemVer(raw: string): SemVer {
+export function parseSemVer(raw: string): SemVer {
   // Strip leading non-digit prefix (^, ~, v) and pre-release/build metadata
   // so strings like "1.0.0-alpha" or "1.0.0+build" parse correctly.
   // Without the pre-release strip, Number('0-alpha') returns NaN.
