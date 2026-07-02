@@ -1,5 +1,5 @@
-import { writeFileSync, mkdirSync } from 'fs';
-import { join, resolve } from 'path';
+import { writeFileSync, mkdirSync, readFileSync } from 'fs';
+import { join, resolve, dirname } from 'path';
 import type { NextConfig } from 'next';
 import type { ShareManifest, ShareConfig } from './types';
 
@@ -97,6 +97,66 @@ export function shareConfig(config: ShareConfig & { baseUrl?: string }) {
         const existing = (
           nextConfig as { webpack?: (c: object, x: object) => object }
         ).webpack;
+        if (existing) return existing(webpackConfig, ctx);
+        return webpackConfig;
+      },
+    };
+  };
+}
+
+/**
+ * Writes the shell's declared shared-dependency versions to a contract file
+ * that exposing apps read at their own build time (see shared-dep-resolver.ts).
+ * `provides` is explicit and authored, not auto-derived from every installed
+ * dependency — the shell should only advertise deps it deliberately intends
+ * to expose as stable runtime globals via <BridgeSharedDepsProvider>.
+ */
+export function generateSharedContract(config: {
+  provides: string[];
+  outputPath: string;
+  ownPackageJsonPath?: string;
+}): Record<string, string> {
+  const { provides, outputPath, ownPackageJsonPath = './package.json' } = config;
+
+  const ownPkg = JSON.parse(readFileSync(resolve(ownPackageJsonPath), 'utf-8')) as {
+    dependencies?: Record<string, string>;
+  };
+
+  const contract: Record<string, string> = {};
+  for (const dep of provides) {
+    const version = ownPkg.dependencies?.[dep];
+    if (!version) {
+      throw new Error(`sharedDepsConfig: "${dep}" is not in dependencies of ${ownPackageJsonPath}`);
+    }
+    contract[dep] = version;
+  }
+
+  const absOut = resolve(outputPath);
+  mkdirSync(dirname(absOut), { recursive: true });
+  writeFileSync(absOut, JSON.stringify(contract, null, 2));
+
+  return contract;
+}
+
+/**
+ * Next.js config wrapper for the shell app. Regenerates the shared-dep
+ * contract on config evaluation and on every webpack compile, mirroring
+ * shareConfig()'s pattern for share-manifest.json.
+ */
+export function sharedDepsConfig(config: {
+  provides: string[];
+  outputPath: string;
+  ownPackageJsonPath?: string;
+}) {
+  return (nextConfig: NextConfig): NextConfig => {
+    generateSharedContract(config);
+
+    return {
+      ...nextConfig,
+      webpack(webpackConfig: object, ctx: object) {
+        generateSharedContract(config);
+
+        const existing = (nextConfig as { webpack?: (c: object, x: object) => object }).webpack;
         if (existing) return existing(webpackConfig, ctx);
         return webpackConfig;
       },
