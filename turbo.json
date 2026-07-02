@@ -9,6 +9,10 @@
       "dependsOn": ["^build", "web#build"],
       "outputs": [".next/**", "dist/**", "!dist/**/*.map"]
     },
+    "storefront#build": {
+      "dependsOn": ["^build", "web#build"],
+      "outputs": [".next/**", "dist/**", "!dist/**/*.map"]
+    },
     "dev": {
       "cache": false,
       "persistent": true
