@@ -1,7 +1,7 @@
 import {
   createElement,
   createRoot
-} from "./chunk-QKQMZQ5L.chunk.js";
+} from "./chunk-O4VRBSR5.chunk.js";
 
 // src/components/recommendations-team/popular-products-panel.tsx
 function PopularProductsPanel() {
