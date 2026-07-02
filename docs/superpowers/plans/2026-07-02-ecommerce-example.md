@@ -57,7 +57,7 @@
 - Create: `apps/storefront/package.json`, `apps/storefront/tsconfig.json`, `apps/storefront/next-env.d.ts`, `apps/storefront/next.config.ts`, `apps/storefront/tsup.config.ts`, `apps/storefront/app/layout.tsx`, `apps/storefront/app/page.tsx`, `apps/storefront/src/components/home-team/home-widget.tsx`, `apps/storefront/src/components/recommendations-team/popular-products-panel.tsx`
 
 **Interfaces:**
-- Produces: a working app on port 3002 that builds two chunks (`home-widget.chunk.js`, `popular-products-panel.chunk.js`) and a `share-manifest.json`, mirroring `apps/host`'s existing build.
+- Produces: a working app on port 3002 that builds two chunks (`homewidget.chunk.js`, `popularproductspanel.chunk.js` — names must match `slugifyExpose()`'s output for each expose key, see Step 7) and a `share-manifest.json`, mirroring `apps/host`'s existing build.
 
 - [ ] **Step 1: Create the package manifest**
 
@@ -227,8 +227,13 @@ const decisions = loadSharedDepDecisions(
 
 export default defineConfig({
   entry: {
-    'home-widget': 'src/components/home-team/home-widget.tsx',
-    'popular-products-panel': 'src/components/recommendations-team/popular-products-panel.tsx',
+    // Keys must match slugifyExpose()'s output for the corresponding expose
+    // key (packages/share/src/next-config-helper.ts:7-9 strips './' and
+    // lowercases — it does NOT preserve hyphens from camelCase), since the
+    // manifest's chunk path is derived from the expose key independently of
+    // this entry key. './HomeWidget' -> 'homewidget', not 'home-widget'.
+    homewidget: 'src/components/home-team/home-widget.tsx',
+    popularproductspanel: 'src/components/recommendations-team/popular-products-panel.tsx',
   },
   format: ['esm'],
   outDir: 'public',
@@ -325,7 +330,7 @@ Expected: lockfile updates to include the new `storefront` workspace member, no 
 - [ ] **Step 11: Build the new app standalone and verify output**
 
 Run: `pnpm --filter storefront build`
-Expected: succeeds; `apps/storefront/public/home-widget.chunk.js`, `apps/storefront/public/popular-products-panel.chunk.js`, and `apps/storefront/public/share-manifest.json` all exist. `cat apps/storefront/public/share-manifest.json` shows both `./HomeWidget` and `./PopularProductsPanel` under `exposes`.
+Expected: succeeds; `apps/storefront/public/homewidget.chunk.js`, `apps/storefront/public/popularproductspanel.chunk.js`, and `apps/storefront/public/share-manifest.json` all exist. `cat apps/storefront/public/share-manifest.json` shows both `./HomeWidget` and `./PopularProductsPanel` under `exposes`, each with a `chunk` path that matches one of those two filenames exactly (this is the check that catches an entry-key/expose-key mismatch — see Step 7's comment in `tsup.config.ts`).
 
 - [ ] **Step 12: Type-check**
 
@@ -598,11 +603,11 @@ export default mount;
 
 Run: `pnpm --filter storefront build:chunks`
 Expected: succeeds. Then run: `ls apps/storefront/public`
-Expected: alongside `home-widget.chunk.js`, `popular-products-panel.chunk.js`, and `share-manifest.json`, at least one additional file matching `add-to-cart*.chunk.js` (tsup/esbuild code-splits dynamic `import()` targets into separate output files by default for ESM format, and `outExtension` applies the same `.chunk.js` suffix to every emitted file, so this split file also matches the existing CORS header pattern in `next.config.ts`). If no such file appears, add `splitting: true` to the `defineConfig({...})` object in `apps/storefront/tsup.config.ts` and rerun this step.
+Expected: alongside `homewidget.chunk.js`, `popularproductspanel.chunk.js`, and `share-manifest.json`, at least one additional file matching `add-to-cart*.chunk.js` (tsup/esbuild code-splits dynamic `import()` targets into separate output files by default for ESM format, and `outExtension` applies the same `.chunk.js` suffix to every emitted file, so this split file also matches the existing CORS header pattern in `next.config.ts`). If no such file appears, add `splitting: true` to the `defineConfig({...})` object in `apps/storefront/tsup.config.ts` and rerun this step.
 
 - [ ] **Step 8: Verify no unaliased `react/jsx-runtime` leaked into the bundled chunk**
 
-Run: `grep -c "jsx-runtime" apps/storefront/public/home-widget.chunk.js`
+Run: `grep -c "jsx-runtime" apps/storefront/public/homewidget.chunk.js`
 Expected: `0`. If nonzero, check that `product-card.tsx` and `add-to-cart.ts` only import `useLazyHandler` (not `Interactive`/`withLazyHandlers`) from `@bridge/lazy-handler`.
 
 - [ ] **Step 9: Type-check**
@@ -690,7 +695,7 @@ export default mount;
 - [ ] **Step 2: Build and verify**
 
 Run: `pnpm --filter storefront build`
-Expected: succeeds; `apps/storefront/public/popular-products-panel.chunk.js` rebuilds without error.
+Expected: succeeds; `apps/storefront/public/popularproductspanel.chunk.js` rebuilds without error.
 
 - [ ] **Step 3: Type-check**
 
@@ -750,7 +755,11 @@ entry: { button: 'src/components/button.tsx' },
 // to:
 entry: {
   button: 'src/components/button.tsx',
-  'cart-widget': 'src/components/checkout-team/cart-widget.tsx',
+  // Key must match slugifyExpose('./CartWidget') (strips './', lowercases,
+  // no hyphen) from packages/share/src/next-config-helper.ts:7-9 — the
+  // manifest's chunk path is derived from the expose key independently of
+  // this entry key, so 'cart-widget' here would silently mismatch it.
+  cartwidget: 'src/components/checkout-team/cart-widget.tsx',
 },
 ```
 
@@ -942,16 +951,16 @@ export default mount;
 - [ ] **Step 7: Build and verify both host chunks + the existing Button still work**
 
 Run: `pnpm --filter host build`
-Expected: succeeds. `apps/host/public/button.chunk.js` still exists (unchanged expose). `apps/host/public/cart-widget.chunk.js` now exists. `cat apps/host/public/share-manifest.json` shows both `./Button` and `./CartWidget` under `exposes`.
+Expected: succeeds. `apps/host/public/button.chunk.js` still exists (unchanged expose). `apps/host/public/cartwidget.chunk.js` now exists. `cat apps/host/public/share-manifest.json` shows both `./Button` and `./CartWidget` under `exposes`, each with a `chunk` path matching an actual file on disk.
 
 - [ ] **Step 8: Verify code-splitting produced a separate handler chunk**
 
 Run: `ls apps/host/public`
-Expected: alongside `button.chunk.js`, `cart-widget.chunk.js`, and `share-manifest.json`, at least one additional file matching `start-checkout*.chunk.js`. If missing, add `splitting: true` to the `defineConfig({...})` object in `apps/host/tsup.config.ts` and rerun `pnpm --filter host build:chunks`.
+Expected: alongside `button.chunk.js`, `cartwidget.chunk.js`, and `share-manifest.json`, at least one additional file matching `start-checkout*.chunk.js`. If missing, add `splitting: true` to the `defineConfig({...})` object in `apps/host/tsup.config.ts` and rerun `pnpm --filter host build:chunks`.
 
 - [ ] **Step 9: Verify no unaliased `react/jsx-runtime` leaked into the bundled chunk**
 
-Run: `grep -c "jsx-runtime" apps/host/public/cart-widget.chunk.js`
+Run: `grep -c "jsx-runtime" apps/host/public/cartwidget.chunk.js`
 Expected: `0`. If nonzero, check that `cart-widget.tsx` only imports `useLazyHandler` (not `Interactive`/`withLazyHandlers`) from `@bridge/lazy-handler`.
 
 - [ ] **Step 10: Run the existing `/demo/share` page's expectations still hold**
@@ -1227,7 +1236,7 @@ Expected: the "Summer Essentials" hero and its 4-product grid render on initial 
 
 - [ ] **Step 4: Verify the side panel defers until scrolled into view**
 
-Open DevTools → Network tab, filter by `popular-products-panel`. Expected: no request for it until you scroll the panel into the viewport; the gray skeleton blocks render until then.
+Open DevTools → Network tab, filter by `popularproductspanel`. Expected: no request for it until you scroll the panel into the viewport; the gray skeleton blocks render until then.
 
 - [ ] **Step 5: Verify cross-widget cart sync**
 
