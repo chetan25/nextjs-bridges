@@ -205,7 +205,9 @@ git commit -m "feat(share): add resolveSharedDeps compatibility check"
 
 **Interfaces:**
 - Consumes: `resolveSharedDeps` from Task 1.
-- Produces: `export function readContract(contractPath: string): Record<string, string>`, `export function loadSharedDepDecisions(shared: Record<string, { singleton?: boolean }>, ownVersions: Record<string, string>, contractPath: string): Record<string, SharedDepDecision>`
+- Produces: `export function readContract(contractPath: string): Record<string, string>`, `export function loadSharedDepDecisions(shared: Record<string, { singleton?: boolean }>, ownVersions: Record<string, string>, contractPath: string): Record<string, SharedDepDecision>`, `export function loadOwnVersions(shared: Record<string, unknown>, ownPackageJsonPath: string): Record<string, string>`
+
+`loadOwnVersions` exists so Task 6 (`generateShareManifest`) and Task 10 (`apps/host/tsup.config.ts`) don't each duplicate the same "read own `package.json`, map dep versions" glue — both call sites need the exact same four lines otherwise.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -256,12 +258,35 @@ describe('loadSharedDepDecisions', () => {
     expect(result.react.external).toBe(false);
   });
 });
+
+describe('loadOwnVersions', () => {
+  it('reads each shared dep\'s version from package.json dependencies', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'bridge-pkg-'));
+    const path = join(dir, 'package.json');
+    writeFileSync(path, JSON.stringify({ dependencies: { react: '^18.3.0', 'react-dom': '^18.3.0', unrelated: '^1.0.0' } }));
+
+    expect(loadOwnVersions({ react: {}, 'react-dom': {} }, path)).toEqual({
+      react: '^18.3.0',
+      'react-dom': '^18.3.0',
+    });
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('defaults to "0.0.0" for a shared dep missing from dependencies', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'bridge-pkg-'));
+    const path = join(dir, 'package.json');
+    writeFileSync(path, JSON.stringify({ dependencies: {} }));
+
+    expect(loadOwnVersions({ react: {} }, path)).toEqual({ react: '0.0.0' });
+    rmSync(dir, { recursive: true, force: true });
+  });
+});
 ```
 
 - [ ] **Step 2: Run tests to verify they fail**
 
 Run: `pnpm --filter @bridge/share test -- shared-dep-resolver`
-Expected: FAIL — `readContract`/`loadSharedDepDecisions` not exported
+Expected: FAIL — `readContract`/`loadSharedDepDecisions`/`loadOwnVersions` not exported
 
 - [ ] **Step 3: Implement**
 
@@ -285,12 +310,29 @@ export function loadSharedDepDecisions(
 ): Record<string, SharedDepDecision> {
   return resolveSharedDeps(shared, ownVersions, readContract(contractPath));
 }
+
+/**
+ * Reads each shared dependency's version out of a package.json's
+ * `dependencies` field. Shared by generateShareManifest() (Task 6) and
+ * apps/host/tsup.config.ts (Task 10) so neither duplicates this glue.
+ */
+export function loadOwnVersions(
+  shared: Record<string, unknown>,
+  ownPackageJsonPath: string,
+): Record<string, string> {
+  const ownPkg = JSON.parse(readFileSync(ownPackageJsonPath, 'utf-8')) as {
+    dependencies?: Record<string, string>;
+  };
+  return Object.fromEntries(
+    Object.keys(shared).map((dep) => [dep, ownPkg.dependencies?.[dep] ?? '0.0.0']),
+  );
+}
 ```
 
 - [ ] **Step 4: Run tests to verify they pass**
 
 Run: `pnpm --filter @bridge/share test -- shared-dep-resolver`
-Expected: PASS (13 tests total)
+Expected: PASS (15 tests total)
 
 - [ ] **Step 5: Commit**
 
@@ -557,7 +599,7 @@ git commit -m "feat(share): add sharedDepsConfig for the consuming shell"
 - Modify: `packages/share/test/next-config-helper.test.ts`
 
 **Interfaces:**
-- Consumes: `loadSharedDepDecisions` (Task 2).
+- Consumes: `loadSharedDepDecisions`, `loadOwnVersions` (Task 2).
 - Produces: `generateShareManifest(config: ShareConfig & { outputDir?: string; sharedContractPath?: string; ownPackageJsonPath?: string })` now writes real per-dep versions and `external` into `manifest.shared` instead of the previous hardcoded `'0.0.0'`.
 
 - [ ] **Step 1: Write the failing tests**
@@ -635,7 +677,7 @@ Expected: FAIL — current implementation always writes `version: '0.0.0'` and n
 
 ```ts
 // packages/share/src/next-config-helper.ts — replace generateShareManifest with:
-import { loadSharedDepDecisions } from './shared-dep-resolver';
+import { loadSharedDepDecisions, loadOwnVersions } from './shared-dep-resolver';
 
 export function generateShareManifest(
   config: ShareConfig & { outputDir?: string; sharedContractPath?: string; ownPackageJsonPath?: string },
@@ -653,12 +695,7 @@ export function generateShareManifest(
 
   let sharedEntries: ShareManifest['shared'];
   if (shared) {
-    const ownPkg = JSON.parse(readFileSync(resolve(ownPackageJsonPath), 'utf-8')) as {
-      dependencies?: Record<string, string>;
-    };
-    const ownVersions = Object.fromEntries(
-      Object.keys(shared).map((dep) => [dep, ownPkg.dependencies?.[dep] ?? '0.0.0']),
-    );
+    const ownVersions = loadOwnVersions(shared, resolve(ownPackageJsonPath));
     const decisions = sharedContractPath
       ? loadSharedDepDecisions(shared, ownVersions, resolve(sharedContractPath))
       : Object.fromEntries(
@@ -1205,7 +1242,7 @@ git commit -m "feat(share): guard externalized chunks against shared-dep drift a
 - Modify: `apps/host/tsup.config.ts`
 
 **Interfaces:**
-- Consumes: `loadSharedDepDecisions` from `@bridge/share/shared-dep-resolver` (Task 4).
+- Consumes: `loadSharedDepDecisions`, `loadOwnVersions` from `@bridge/share/shared-dep-resolver` (Task 4).
 
 **Important correction vs. the spec's illustrative sketch:** only `esbuildOptions.alias` should vary by decision. `noExternal` must stay exactly as today (`[/react/]`) regardless of the decision. Reasoning: esbuild's `external` leaves an import specifier completely unresolved in the output (which would require an import map for the browser to resolve the bare `"react"` specifier at runtime — not part of this design). `alias` instead redirects module *resolution* — when compatible, `'react'` resolves to the shim file (which then gets normally bundled, since it's tiny); when incompatible, no alias is set and normal `node_modules` resolution finds the real `react` package, which also gets normally bundled (today's behavior, unchanged). `noExternal: [/react/]` is what forces tsup to bundle *whatever these specifiers resolve to* rather than leaving them as tsup's usual default of "external because it's a package.json dependency" — that part of the behavior is identical whether or not the alias is active, so it never needs to change.
 
@@ -1214,18 +1251,11 @@ git commit -m "feat(share): guard externalized chunks against shared-dep drift a
 ```ts
 // apps/host/tsup.config.ts
 import { defineConfig } from 'tsup';
-import { readFileSync } from 'fs';
 import { resolve } from 'path';
-import { loadSharedDepDecisions } from '@bridge/share/shared-dep-resolver';
-
-const ownPkg = JSON.parse(readFileSync(resolve(process.cwd(), 'package.json'), 'utf-8')) as {
-  dependencies?: Record<string, string>;
-};
+import { loadSharedDepDecisions, loadOwnVersions } from '@bridge/share/shared-dep-resolver';
 
 const SHARED = { react: {}, 'react-dom': {} };
-const ownVersions = Object.fromEntries(
-  Object.keys(SHARED).map((dep) => [dep, ownPkg.dependencies?.[dep] ?? '0.0.0']),
-);
+const ownVersions = loadOwnVersions(SHARED, resolve(process.cwd(), 'package.json'));
 const decisions = loadSharedDepDecisions(
   SHARED,
   ownVersions,
