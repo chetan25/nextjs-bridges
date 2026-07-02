@@ -92,7 +92,9 @@ export function generateShareManifest(
  *   exposes: { './Button': './src/components/Button.tsx' },
  * })({});
  */
-export function shareConfig(config: ShareConfig & { baseUrl?: string }) {
+export function shareConfig(
+  config: ShareConfig & { baseUrl?: string; sharedContractPath?: string; ownPackageJsonPath?: string },
+) {
   return (nextConfig: NextConfig): NextConfig => {
     generateShareManifest({ ...config, outputDir: 'public' });
 

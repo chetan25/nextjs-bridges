@@ -24,4 +24,6 @@ export default shareConfig({
   exposes: {
     './Button': './src/components/button.tsx',
   },
+  shared: { react: {}, 'react-dom': {} },
+  sharedContractPath: '../../packages/share/shared-contract.json',
 })(nextConfig);
