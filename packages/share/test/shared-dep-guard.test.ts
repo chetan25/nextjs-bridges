@@ -22,8 +22,23 @@ describe('assertSharedDepsAvailable', () => {
     ).not.toThrow();
   });
 
-  it('passes when the live global exists and its version is compatible', () => {
+  it('passes when the live global exists and its version is compatible with a caret range', () => {
     window.__bridgeShared = { react: { version: '18.3.1' } };
+    expect(() =>
+      assertSharedDepsAvailable({ react: { version: '^18.3.0', external: true } }),
+    ).not.toThrow();
+  });
+
+  it('treats entry.version without a leading caret as an exact requirement', () => {
+    // entry.version is passed through to checkVersion as-is (no caret is
+    // prepended), so a bare version string like "18.3.0" now means "must
+    // match exactly", not "must satisfy ^18.3.0".
+    window.__bridgeShared = { react: { version: '18.3.1' } };
+    expect(() =>
+      assertSharedDepsAvailable({ react: { version: '18.3.0', external: true } }),
+    ).toThrow('Version mismatch');
+
+    window.__bridgeShared = { react: { version: '18.3.0' } };
     expect(() =>
       assertSharedDepsAvailable({ react: { version: '18.3.0', external: true } }),
     ).not.toThrow();

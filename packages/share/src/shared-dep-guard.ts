@@ -35,6 +35,6 @@ export function assertSharedDepsAvailable(shared: ShareManifest['shared']): void
       );
     }
 
-    checkVersion(live.version, `^${entry.version}`);
+    checkVersion(live.version, entry.version);
   }
 }
