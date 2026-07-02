@@ -21,6 +21,11 @@ export default function HomePage() {
               @bridge/share — runtime cross-app component sharing
             </Link>
           </li>
+          <li>
+            <Link href="/demo/ecommerce">
+              e-commerce example — all three bridges together
+            </Link>
+          </li>
         </ul>
       </nav>
     </main>
