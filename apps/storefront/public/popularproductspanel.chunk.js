@@ -1,14 +1,40 @@
 import {
+  ProductCard,
   createElement,
   createRoot
-} from "./chunk-O4VRBSR5.chunk.js";
+} from "./chunk-WXUM5PEV.chunk.js";
 
 // src/components/recommendations-team/popular-products-panel.tsx
-function PopularProductsPanel() {
+var DEFAULT_PRODUCTS = [
+  { id: "r1", name: "Insulated Bottle", price: 22, color: "#c7d2fe" },
+  { id: "r2", name: "Desk Plant", price: 12.99, color: "#a7f3d0" },
+  { id: "r3", name: "Notebook Set", price: 9.5, color: "#fbcfe8" }
+];
+function PopularProductsPanel({ products = DEFAULT_PRODUCTS }) {
   return createElement(
-    "div",
-    { style: { padding: "1rem", background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 12 } },
-    createElement("h2", { style: { margin: 0, fontSize: "1.1rem" } }, "Recommendations team widget \u2014 scaffold OK")
+    "section",
+    {
+      style: {
+        display: "flex",
+        flexDirection: "column",
+        gap: "0.75rem",
+        padding: "1rem",
+        border: "1px solid #e2e8f0",
+        borderRadius: 12,
+        background: "#f8fafc"
+      }
+    },
+    createElement("h2", { style: { margin: 0, fontSize: "1.1rem" } }, "\u{1F525} Popular Right Now"),
+    createElement(
+      "p",
+      { style: { margin: 0, fontSize: "0.8rem", color: "#64748b" } },
+      "Owned by the Recommendations team \u2014 loaded from apps/storefront"
+    ),
+    createElement(
+      "div",
+      { style: { display: "flex", flexDirection: "column", gap: "0.75rem" } },
+      ...products.map((p) => createElement(ProductCard, { key: p.id, ...p }))
+    )
   );
 }
 var mount = (container, props) => {

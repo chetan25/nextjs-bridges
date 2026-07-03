@@ -6,6 +6,10 @@
     "./Button": {
       "chunk": "/button.chunk.js",
       "version": "1.0.0"
+    },
+    "./CartWidget": {
+      "chunk": "/cartwidget.chunk.js",
+      "version": "1.0.0"
     }
   },
   "shared": {

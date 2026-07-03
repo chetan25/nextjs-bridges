@@ -51,5 +51,9 @@ var { createRoot, hydrateRoot } = reactDomClient;
 
 export {
   createElement,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
   createRoot
 };
