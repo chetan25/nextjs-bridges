@@ -1,14 +1,19 @@
 'use client';
-import { useRef, useCallback, useEffect, type RefObject } from 'react';
+import { useRef, useCallback, useEffect, useState } from 'react';
 import type { HandlerFn, Loader, LazyHandlerOptions } from './types';
 
 export function useLazyHandler<T extends Element>(
   loader: Loader,
   options: LazyHandlerOptions = {},
-): [RefObject<T | null>, (e: Event) => void] {
+): [(node: T | null) => void, (e: Event) => void] {
   const { event = 'click', capture = false, preloadOn = 'none' } = options;
 
-  const ref = useRef<T | null>(null);
+  // A callback ref (backed by state) rather than a plain useRef: the target
+  // element may mount after this hook's owning component's first render
+  // (e.g. a button behind `open && items.length > 0`). A useRef wouldn't
+  // trigger the effect below to re-run once that element actually appears.
+  const [node, setNode] = useState<T | null>(null);
+  const ref = useCallback((el: T | null) => setNode(el), []);
   const handlerRef = useRef<HandlerFn | null>(null);
   const loaderRef = useRef(loader);
   const loadingRef = useRef(false);
@@ -49,7 +54,7 @@ export function useLazyHandler<T extends Element>(
   }, []);
 
   useEffect(() => {
-    const el = ref.current;
+    const el = node;
     if (!el) return;
 
     cancelledRef.current = false;
@@ -111,7 +116,7 @@ export function useLazyHandler<T extends Element>(
       cancelledRef.current = true;
       el.removeEventListener(event, stub, { capture });
     };
-  }, [event, capture, preloadOn, stub]);
+  }, [node, event, capture, preloadOn, stub]);
 
   return [ref, stub];
 }

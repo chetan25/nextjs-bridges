@@ -1,6 +1,6 @@
 import { render, fireEvent, act } from '@testing-library/react';
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { useLazyHandler } from '../src/use-lazy-handler';
 import type { Loader, LazyHandlerOptions } from '../src/types';
 
@@ -14,6 +14,27 @@ function TestComponent({
 }) {
   const [ref] = useLazyHandler<HTMLDivElement>(loader, options);
   return <div ref={ref} data-testid="target" />;
+}
+
+// Mirrors CartWidget's checkout button: the ref target doesn't exist on
+// initial render — it only mounts once `show` flips true.
+function ConditionallyMountedTestComponent({
+  loader,
+  options,
+}: {
+  loader: Loader;
+  options?: LazyHandlerOptions;
+}) {
+  const [show, setShow] = useState(false);
+  const [ref] = useLazyHandler<HTMLDivElement>(loader, options);
+  return (
+    <div>
+      <button data-testid="toggle" onClick={() => setShow(true)}>
+        show
+      </button>
+      {show && <div ref={ref} data-testid="target" />}
+    </div>
+  );
 }
 
 afterEach(() => {
@@ -139,5 +160,30 @@ describe('useLazyHandler', () => {
 
     // Should not throw; handler should NOT be called (cancelled=true)
     expect(handler).not.toHaveBeenCalled();
+  });
+
+  it('attaches the listener when the ref target mounts after initial render', async () => {
+    const handler = vi.fn();
+    const loader = vi.fn(() => Promise.resolve({ default: handler }));
+
+    const { getByTestId, queryByTestId } = render(
+      <ConditionallyMountedTestComponent loader={loader} />,
+    );
+
+    expect(queryByTestId('target')).toBeNull();
+
+    await act(async () => {
+      fireEvent.click(getByTestId('toggle'));
+    });
+
+    const el = getByTestId('target');
+
+    await act(async () => {
+      fireEvent.click(el);
+      await Promise.resolve();
+    });
+
+    expect(loader).toHaveBeenCalledTimes(1);
+    expect(handler).toHaveBeenCalledTimes(1);
   });
 });

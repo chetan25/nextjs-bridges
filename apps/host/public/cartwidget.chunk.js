@@ -7,10 +7,11 @@ import {
   useState
 } from "./chunk-NXXJ244C.chunk.js";
 
-// ../../packages/lazy-handler/dist/chunk-I6EIE6O6.mjs
+// ../../packages/lazy-handler/dist/chunk-MLOX4YZF.mjs
 function useLazyHandler(loader, options = {}) {
   const { event = "click", capture = false, preloadOn = "none" } = options;
-  const ref = useRef(null);
+  const [node, setNode] = useState(null);
+  const ref = useCallback((el) => setNode(el), []);
   const handlerRef = useRef(null);
   const loaderRef = useRef(loader);
   const loadingRef = useRef(false);
@@ -42,7 +43,7 @@ function useLazyHandler(loader, options = {}) {
     });
   }, []);
   useEffect(() => {
-    const el = ref.current;
+    const el = node;
     if (!el) return;
     cancelledRef.current = false;
     const doPreload = () => {
@@ -94,7 +95,7 @@ function useLazyHandler(loader, options = {}) {
       cancelledRef.current = true;
       el.removeEventListener(event, stub, { capture });
     };
-  }, [event, capture, preloadOn, stub]);
+  }, [node, event, capture, preloadOn, stub]);
   return [ref, stub];
 }
 
