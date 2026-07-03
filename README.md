@@ -411,6 +411,32 @@ pnpm type-check       # TypeScript across the monorepo
 
 ---
 
+## Troubleshooting
+
+### Windows: `pnpm dev` fails with `error while loading shared libraries` / exit code `3221225781`
+
+This is Turborepo's native CLI (`turbo.exe`, from `@turbo/windows-64`) failing to load, not Node.js or Turbopack. It shows up as:
+
+```
+ELIFECYCLE  Command failed with exit code 3221225781.
+C:/Program Files/nodejs/node.exe: error while loading shared libraries: ?: cannot open shared object file: No such file or directory
+```
+
+**Root cause:** third-party antivirus (commonly Kaspersky) blocking or interfering with the freshly-downloaded, unsigned `turbo.exe` binary via its real-time protection / reputation heuristics. A `pnpm install --force` or full `node_modules` reinstall does **not** fix this — the reinstalled binary hits the same block. Turbopack (Next.js's own bundler, used inside each app's `next dev --turbopack`) is a separate binary and is unaffected — you can still run the apps.
+
+**Fix:**
+
+1. Add an exclusion in your antivirus for the repo folder (and/or your global pnpm store) so `turbo.exe` is allowed to run — e.g. in Kaspersky: **Settings → Threats and Exclusions → Manage exclusions**, add this repo's path.
+2. Until that's done, bypass `turbo` and start each app directly, in separate terminals, from the repo root:
+
+   ```bash
+   pnpm --filter web dev        # http://localhost:3000
+   pnpm --filter host dev       # http://localhost:3001
+   pnpm --filter storefront dev # http://localhost:3002
+   ```
+
+---
+
 ## Missing Features / Known Limitations
 
 These are gaps in the current implementation that are on the roadmap but not yet shipped:
