@@ -152,9 +152,26 @@ export function generateSharedContract(config: {
 }
 
 /**
+ * Env var name a shared dep's build-time-declared version is injected under.
+ * Next.js's Turbopack dev server resolves 'react'/'react-dom' for every
+ * 'use client' component to its own internally-vendored canary build,
+ * regardless of what's actually installed — so BridgeSharedDepsProvider
+ * can't trust a live `React.version`/`ReactDOM.version` read in dev. This key
+ * format must match the (duplicated, not imported — this module is Node-only)
+ * copy in bridge-shared-deps-provider.tsx, which runs in the browser and reads
+ * this env var instead of the live version when it's present.
+ */
+export function sharedDepEnvKey(dep: string): string {
+  return `NEXT_PUBLIC_BRIDGE_VERSION_${dep.toUpperCase().replace(/[^A-Z0-9]/g, '_')}`;
+}
+
+/**
  * Next.js config wrapper for the shell app. Regenerates the shared-dep
  * contract on config evaluation and on every webpack compile, mirroring
- * shareConfig()'s pattern for share-manifest.json.
+ * shareConfig()'s pattern for share-manifest.json. Also injects each
+ * provided dep's declared version as a NEXT_PUBLIC_BRIDGE_VERSION_* env var
+ * (see sharedDepEnvKey) so BridgeSharedDepsProvider can publish a build-time
+ * fact instead of a runtime-observed value Turbopack's dev server can corrupt.
  */
 export function sharedDepsConfig(config: {
   provides: string[];
@@ -162,10 +179,14 @@ export function sharedDepsConfig(config: {
   ownPackageJsonPath?: string;
 }) {
   return (nextConfig: NextConfig): NextConfig => {
-    generateSharedContract(config);
+    const contract = generateSharedContract(config);
+    const env = Object.fromEntries(
+      Object.entries(contract).map(([dep, version]) => [sharedDepEnvKey(dep), version]),
+    );
 
     return {
       ...nextConfig,
+      env: { ...nextConfig.env, ...env },
       webpack(webpackConfig: object, ctx: object) {
         generateSharedContract(config);
 

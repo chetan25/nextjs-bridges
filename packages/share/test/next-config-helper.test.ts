@@ -2,7 +2,12 @@ import { describe, it, expect, afterEach } from 'vitest';
 import { mkdtempSync, writeFileSync, readFileSync, rmSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
-import { generateSharedContract, generateShareManifest } from '../src/next-config-helper';
+import {
+  generateSharedContract,
+  generateShareManifest,
+  sharedDepsConfig,
+  sharedDepEnvKey,
+} from '../src/next-config-helper';
 
 describe('generateSharedContract', () => {
   const dirs: string[] = [];
@@ -53,6 +58,59 @@ describe('generateSharedContract', () => {
     });
 
     expect(JSON.parse(readFileSync(outputPath, 'utf-8'))).toEqual({ react: '^18.3.1' });
+  });
+});
+
+describe('sharedDepEnvKey', () => {
+  it('uppercases and strips non-alphanumeric characters', () => {
+    expect(sharedDepEnvKey('react')).toBe('NEXT_PUBLIC_BRIDGE_VERSION_REACT');
+    expect(sharedDepEnvKey('react-dom')).toBe('NEXT_PUBLIC_BRIDGE_VERSION_REACT_DOM');
+  });
+});
+
+describe('sharedDepsConfig', () => {
+  const dirs: string[] = [];
+  afterEach(() => {
+    for (const d of dirs.splice(0)) rmSync(d, { recursive: true, force: true });
+  });
+
+  function makeAppDir(deps: Record<string, string>): string {
+    const dir = mkdtempSync(join(tmpdir(), 'bridge-shell-'));
+    writeFileSync(join(dir, 'package.json'), JSON.stringify({ dependencies: deps }));
+    dirs.push(dir);
+    return dir;
+  }
+
+  it('injects each provided dep\'s version as a NEXT_PUBLIC_BRIDGE_VERSION_* env var', () => {
+    const appDir = makeAppDir({ react: '^18.3.0', 'react-dom': '^18.3.0' });
+    const outputPath = join(appDir, 'shared-contract.json');
+
+    const result = sharedDepsConfig({
+      provides: ['react', 'react-dom'],
+      outputPath,
+      ownPackageJsonPath: join(appDir, 'package.json'),
+    })({});
+
+    expect(result.env).toEqual({
+      NEXT_PUBLIC_BRIDGE_VERSION_REACT: '^18.3.0',
+      NEXT_PUBLIC_BRIDGE_VERSION_REACT_DOM: '^18.3.0',
+    });
+  });
+
+  it('preserves any env entries already present on the wrapped config', () => {
+    const appDir = makeAppDir({ react: '^18.3.0' });
+    const outputPath = join(appDir, 'shared-contract.json');
+
+    const result = sharedDepsConfig({
+      provides: ['react'],
+      outputPath,
+      ownPackageJsonPath: join(appDir, 'package.json'),
+    })({ env: { EXISTING_VAR: 'kept' } });
+
+    expect(result.env).toEqual({
+      EXISTING_VAR: 'kept',
+      NEXT_PUBLIC_BRIDGE_VERSION_REACT: '^18.3.0',
+    });
   });
 });
 
