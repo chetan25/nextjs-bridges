@@ -5,7 +5,14 @@
 // apps/storefront's and apps/host's handlers.
 const CATEGORIES = ['Footwear', 'Bags', 'Accessories', 'Home Goods'];
 
+let activeClose: (() => void) | null = null;
+
 export default function openCategoriesMenu(event: Event): void {
+  if (activeClose) {
+    activeClose();
+    activeClose = null;
+  }
+
   const trigger = event.currentTarget as HTMLButtonElement;
   const rect = trigger.getBoundingClientRect();
 
@@ -36,7 +43,10 @@ export default function openCategoriesMenu(event: Event): void {
     document.removeEventListener('keydown', onKeydown);
     document.removeEventListener('click', onOutsideClick);
     menu.remove();
+    activeClose = null;
   }
+
+  activeClose = close;
 
   function onKeydown(e: KeyboardEvent) {
     if (e.key === 'Escape') close();
