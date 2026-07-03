@@ -67,11 +67,11 @@ export function NotifyButton() {
 
 **Options**
 
-| Option      | Type                        | Default   | Description            |
-| ----------- | --------------------------- | --------- | ---------------------- |
-| `event`     | `keyof HTMLElementEventMap` | `'click'` | DOM event to intercept |
-| `capture`   | `boolean`                   | `false`   | Use capture phase      |
-| `preloadOn` | `'hover'                    | 'focus'   | 'visible'              | 'none'` | `'none'` | Trigger an early prefetch before the user fires the real event |
+| Option      | Type                                                             | Default   | Description                                                     |
+| ----------- | ----------------------------------------------------------------- | --------- | ----------------------------------------------------------------- |
+| `event`     | `keyof HTMLElementEventMap`                                      | `'click'` | DOM event to intercept                                           |
+| `capture`   | `boolean`                                                        | `false`   | Use capture phase                                                 |
+| `preloadOn` | `'hover' \| 'focus' \| 'visible' \| 'idle' \| 'none'`, or an array of these | `'none'`  | Trigger an early prefetch before the user fires the real event. An array arms multiple strategies at once — whichever fires first wins. |
 
 Your handler module must export a default function:
 
@@ -131,6 +131,7 @@ const LazyButton = withLazyHandlers(Button, {
 - **Each loader ref is stable.** You can pass an inline arrow function as `loader`; the hook holds a ref to the latest version without causing effect re-runs.
 - **No SSR output.** The stub is never attached on the server. The element renders as static HTML until the client hydrates — which is the point.
 - `preloadOn: 'visible'` **requires** `IntersectionObserver`**.** Falls back to no preload in environments that lack it (e.g. Node/jsdom test environments).
+- `preloadOn: 'idle'` **needs no DOM event.** It schedules via `requestIdleCallback` (falling back to `setTimeout(fn, 0)` where unavailable) as soon as the element mounts. Pass an array (e.g. `preloadOn: ['hover', 'idle']`) to arm multiple strategies at once — the first one to fire loads the module; the rest become no-ops.
 
 ---
 

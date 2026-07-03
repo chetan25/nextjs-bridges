@@ -3,8 +3,10 @@ export type HandlerFn = (event: Event) => void | Promise<void>;
 
 export type Loader = () => Promise<{ default: HandlerFn }>;
 
+export type PreloadStrategy = 'hover' | 'focus' | 'visible' | 'idle' | 'none';
+
 export interface LazyHandlerOptions {
   event?: keyof HTMLElementEventMap;
   capture?: boolean;
-  preloadOn?: 'hover' | 'focus' | 'visible' | 'none';
+  preloadOn?: PreloadStrategy | PreloadStrategy[];
 }

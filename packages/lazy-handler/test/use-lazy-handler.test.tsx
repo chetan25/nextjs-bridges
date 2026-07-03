@@ -39,6 +39,7 @@ function ConditionallyMountedTestComponent({
 
 afterEach(() => {
   vi.restoreAllMocks();
+  vi.useRealTimers();
 });
 
 describe('useLazyHandler', () => {
@@ -185,5 +186,67 @@ describe('useLazyHandler', () => {
 
     expect(loader).toHaveBeenCalledTimes(1);
     expect(handler).toHaveBeenCalledTimes(1);
+  });
+
+  it('preloads on idle when preloadOn is "idle"', async () => {
+    vi.useFakeTimers();
+    const handler = vi.fn();
+    const loader = vi.fn(() => Promise.resolve({ default: handler }));
+
+    render(<TestComponent loader={loader} options={{ preloadOn: 'idle' }} />);
+
+    await act(async () => {
+      vi.advanceTimersByTime(0);
+      await Promise.resolve();
+    });
+
+    expect(loader).toHaveBeenCalledTimes(1);
+    expect(handler).not.toHaveBeenCalled();
+  });
+
+  it('preloads via whichever of multiple strategies fires first, and ignores the rest', async () => {
+    vi.useFakeTimers();
+    const handler = vi.fn();
+    const loader = vi.fn(() => Promise.resolve({ default: handler }));
+
+    const { getByTestId } = render(
+      <TestComponent loader={loader} options={{ preloadOn: ['hover', 'idle'] }} />,
+    );
+    const el = getByTestId('target');
+
+    // Hover fires first — this alone should trigger exactly one load.
+    await act(async () => {
+      el.dispatchEvent(new Event('mouseenter', { bubbles: false }));
+      await Promise.resolve();
+    });
+
+    expect(loader).toHaveBeenCalledTimes(1);
+
+    // The idle timer firing afterward must be a no-op (already loaded).
+    await act(async () => {
+      vi.advanceTimersByTime(0);
+      await Promise.resolve();
+    });
+
+    expect(loader).toHaveBeenCalledTimes(1);
+  });
+
+  it('cancels the pending idle preload on unmount', async () => {
+    vi.useFakeTimers();
+    const handler = vi.fn();
+    const loader = vi.fn(() => Promise.resolve({ default: handler }));
+
+    const { unmount } = render(
+      <TestComponent loader={loader} options={{ preloadOn: 'idle' }} />,
+    );
+
+    unmount();
+
+    await act(async () => {
+      vi.advanceTimersByTime(0);
+      await Promise.resolve();
+    });
+
+    expect(loader).not.toHaveBeenCalled();
   });
 });

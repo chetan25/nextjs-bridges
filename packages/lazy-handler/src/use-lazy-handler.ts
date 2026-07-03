@@ -1,12 +1,27 @@
 'use client';
 import { useRef, useCallback, useEffect, useState } from 'react';
-import type { HandlerFn, Loader, LazyHandlerOptions } from './types';
+import type { HandlerFn, Loader, LazyHandlerOptions, PreloadStrategy } from './types';
+
+// Map friendly preloadOn names to real DOM event names.
+// 'hover' is not a DOM event; browsers fire 'mouseenter'/'mouseover'.
+// 'focus' maps to 'focusin' so it also works on delegated containers.
+const DOM_PRELOAD_EVENTS: Record<string, string> = {
+  hover: 'mouseenter',
+  focus: 'focusin',
+};
 
 export function useLazyHandler<T extends Element>(
   loader: Loader,
   options: LazyHandlerOptions = {},
 ): [(node: T | null) => void, (e: Event) => void] {
   const { event = 'click', capture = false, preloadOn = 'none' } = options;
+  const strategies: PreloadStrategy[] = Array.isArray(preloadOn) ? preloadOn : [preloadOn];
+  // Stable string key for the effect's dependency array. `strategies` is a
+  // fresh array reference every render (options are usually passed as an
+  // inline object/array literal), so depending on it directly would tear
+  // down and re-arm every render. This key only changes when the actual
+  // set of strategies changes.
+  const strategiesKey = strategies.join(',');
 
   // A callback ref (backed by state) rather than a plain useRef: the target
   // element may mount after this hook's owning component's first render
@@ -77,8 +92,17 @@ export function useLazyHandler<T extends Element>(
 
     el.addEventListener(event, stub, { capture });
 
-    if (preloadOn === 'visible') {
-      if (typeof IntersectionObserver !== 'undefined') {
+    const teardowns: Array<() => void> = [];
+
+    // strategiesKey (the effect dependency) is derived from `strategies`
+    // via .join(','), so it's safe to read the freshly-computed
+    // `strategies` array here — it always matches the key that triggered
+    // this run.
+    for (const strategy of strategies) {
+      if (strategy === 'none') continue;
+
+      if (strategy === 'visible') {
+        if (typeof IntersectionObserver === 'undefined') continue;
         const obs = new IntersectionObserver(
           ([entry]) => {
             if (entry.isIntersecting) {
@@ -89,34 +113,35 @@ export function useLazyHandler<T extends Element>(
           { threshold: 0.1 },
         );
         obs.observe(el);
-        return () => {
-          cancelledRef.current = true;
-          el.removeEventListener(event, stub, { capture });
-          obs.disconnect();
-        };
+        teardowns.push(() => obs.disconnect());
+        continue;
       }
-    } else if (preloadOn !== 'none') {
-      // Map friendly preloadOn names to real DOM event names.
-      // 'hover' is not a DOM event; browsers fire 'mouseenter'/'mouseover'.
-      // 'focus' maps to 'focusin' so it also works on delegated containers.
-      const DOM_PRELOAD_EVENTS: Record<string, string> = {
-        hover: 'mouseenter',
-        focus: 'focusin',
-      };
-      const preloadEvent = DOM_PRELOAD_EVENTS[preloadOn] ?? preloadOn;
+
+      if (strategy === 'idle') {
+        let id: ReturnType<typeof setTimeout>;
+        if ('requestIdleCallback' in window) {
+          id = requestIdleCallback(doPreload) as unknown as ReturnType<typeof setTimeout>;
+          teardowns.push(() => cancelIdleCallback(id as unknown as number));
+        } else {
+          id = setTimeout(doPreload, 0);
+          teardowns.push(() => clearTimeout(id));
+        }
+        continue;
+      }
+
+      // 'hover' | 'focus'
+      const preloadEvent = DOM_PRELOAD_EVENTS[strategy] ?? strategy;
       el.addEventListener(preloadEvent, doPreload, { once: true });
-      return () => {
-        cancelledRef.current = true;
-        el.removeEventListener(event, stub, { capture });
-        el.removeEventListener(preloadEvent, doPreload);
-      };
+      teardowns.push(() => el.removeEventListener(preloadEvent, doPreload));
     }
 
     return () => {
       cancelledRef.current = true;
       el.removeEventListener(event, stub, { capture });
+      teardowns.forEach((fn) => fn());
     };
-  }, [node, event, capture, preloadOn, stub]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [node, event, capture, strategiesKey, stub]);
 
   return [ref, stub];
 }
