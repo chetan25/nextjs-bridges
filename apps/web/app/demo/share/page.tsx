@@ -24,8 +24,8 @@ function RemoteDemo({
       <RemoteComponent
         manifestUrl={HOST_MANIFEST}
         expose={expose}
-        requiredVersion={requiredVersion}
-        props={props}
+        {...(requiredVersion ? { requiredVersion } : {})}
+        {...(props ? { props } : {})}
         fallback={<span style={{ color: '#64748b', fontSize: '0.85rem' }}>⏳ Loading chunk…</span>}
         errorFallback={(err) => (
           <div style={{ padding: '0.75rem', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 6, fontSize: '0.85rem', color: '#dc2626' }}>
