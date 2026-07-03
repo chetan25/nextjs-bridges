@@ -13,9 +13,13 @@ export interface ProductCardProps {
 // package's main entry (which also contains Interactive/withLazyHandlers and
 // their react/jsx-runtime import) — see this plan's Global Constraints for why.
 export function ProductCard({ id, name, price, color = '#e0e7ff' }: ProductCardProps) {
-  const [ref] = useLazyHandler<HTMLButtonElement>(
+  const [addToCartRef] = useLazyHandler<HTMLButtonElement>(
     () => import('./handlers/add-to-cart'),
     { preloadOn: 'hover' },
+  );
+  const [quickViewRef] = useLazyHandler<HTMLButtonElement>(
+    () => import('./handlers/quick-view'),
+    { preloadOn: ['hover', 'idle'] },
   );
 
   return createElement(
@@ -39,7 +43,7 @@ export function ProductCard({ id, name, price, color = '#e0e7ff' }: ProductCardP
     createElement(
       'button',
       {
-        ref,
+        ref: addToCartRef,
         'data-id': id,
         'data-name': name,
         'data-price': String(price),
@@ -53,6 +57,25 @@ export function ProductCard({ id, name, price, color = '#e0e7ff' }: ProductCardP
         },
       },
       'Add to Cart',
+    ),
+    createElement(
+      'button',
+      {
+        ref: quickViewRef,
+        'data-id': id,
+        'data-name': name,
+        'data-price': String(price),
+        'data-color': color,
+        style: {
+          padding: '0.5rem',
+          background: '#fff',
+          color: '#4f46e5',
+          border: '1px solid #4f46e5',
+          borderRadius: 6,
+          cursor: 'pointer',
+        },
+      },
+      'Quick View',
     ),
   );
 }

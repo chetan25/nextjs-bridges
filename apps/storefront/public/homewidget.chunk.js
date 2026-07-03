@@ -2,7 +2,7 @@ import {
   ProductCard,
   createElement,
   createRoot
-} from "./chunk-KF6TPF4T.chunk.js";
+} from "./chunk-L6S6U2P2.chunk.js";
 
 // src/components/home-team/home-widget.tsx
 var DEFAULT_PRODUCTS = [
