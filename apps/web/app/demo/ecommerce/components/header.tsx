@@ -1,11 +1,17 @@
 'use client';
 import { HydrationBoundary } from '@bridge/hydration';
 import { RemoteComponent } from '@bridge/share';
+import { useLazyHandler } from '@bridge/lazy-handler/use-lazy-handler';
 import { StaticCartIcon } from './static-cart-icon';
 
 const HOST_MANIFEST = 'http://localhost:3001/share-manifest.json';
 
 export function Header() {
+  const [categoriesRef] = useLazyHandler<HTMLButtonElement>(
+    () => import('../handlers/open-categories-menu'),
+    { preloadOn: 'hover' },
+  );
+
   return (
     <header
       style={{
@@ -19,7 +25,19 @@ export function Header() {
       <strong style={{ fontSize: '1.1rem' }}>bridges • shop</strong>
       <nav style={{ display: 'flex', gap: '1rem', fontSize: '0.9rem', color: '#475569' }}>
         <span>Home</span>
-        <span>Categories</span>
+        <button
+          ref={categoriesRef}
+          style={{
+            font: 'inherit',
+            color: 'inherit',
+            background: 'none',
+            border: 'none',
+            padding: 0,
+            cursor: 'pointer',
+          }}
+        >
+          Categories
+        </button>
         <span>Deals</span>
       </nav>
       <HydrationBoundary strategy="idle" fallback={<StaticCartIcon />}>
