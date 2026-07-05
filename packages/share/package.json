@@ -1,6 +1,6 @@
 {
   "name": "@chetand/share",
-  "version": "0.1.0-alpha",
+  "version": "1.0.0",
   "description": "Runtime cross-app component sharing for Next.js 15 + Turbopack — manifest-based Module Federation alternative",
   "license": "MIT",
   "repository": {
@@ -32,7 +32,10 @@
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
-  "files": ["dist", "src"],
+  "files": [
+    "dist",
+    "src"
+  ],
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
