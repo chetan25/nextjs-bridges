@@ -28,7 +28,13 @@ jobs:
         with:
           node-version: 20
           cache: 'pnpm'
-          registry-url: 'https://registry.npmjs.org'
+          # Deliberately no registry-url here: that option makes setup-node
+          # write a project-level .npmrc pointing auth at ${NODE_AUTH_TOKEN},
+          # and @semantic-release/npm's own docs say an existing .npmrc
+          # overrides any env var it's given — so a NODE_AUTH_TOKEN-less
+          # NPM_TOKEN env would silently authenticate as empty (401). Without
+          # this option, no .npmrc is created and @semantic-release/npm reads
+          # NPM_TOKEN directly, defaulting to the public registry on its own.
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
