@@ -2,6 +2,8 @@
 
 > Composable Next.js primitives for lazy event handlers, declarative hydration boundaries, and runtime cross-app component sharing.
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+
 ---
 
 ## The Problem
@@ -27,6 +29,8 @@ Next.js 15+ Turbopack removed Webpack Module Federation and introduced a stricte
 | `[@bridge/share](#bridgeshare)`               | Runtime cross-app component sharing            | `pnpm add @bridge/share`        |
 
 All three are `'use client'` libraries. They are side-effect-free on the server and tree-shakeable.
+
+> **Status:** these packages are not yet published to npm — the release pipeline (see [Commit Convention & Releases](#commit-convention--releases)) is wired up but hasn't cut a first version yet. Until then, `pnpm add @bridge/...` won't resolve; install from this repo via `pnpm add @bridge/lazy-handler@workspace:*` if you're working inside the monorepo, or watch the repo for the first tagged release.
 
 > **See all three working together:** `apps/web`'s `/demo/ecommerce` page composes a small multi-team storefront — a Shell-owned header/footer, a Checkout team's cart widget, and a Home/Recommendations team's product widgets — using `@bridge/share` to load them, `@bridge/hydration` to defer their mount, and `@bridge/lazy-handler` to defer their interaction JS. Run `pnpm dev` from the repo root and open `http://localhost:3000/demo/ecommerce`.
 
@@ -251,7 +255,7 @@ Boundaries nest independently. Each has its own trigger and state.
 2. The hook fetches the manifest (cached for 5 minutes, with retry), resolves the chunk URL, dynamically loads the script, and calls `mount()`.
 3. React renders the remote component inside the local tree with no shared runtime conflicts.
 
-Because each chunk owns its React root, there is no dual-React-instance problem — the host and consumer can run different minor versions of React.
+**React/React-DOM are shared as a runtime singleton when versions are compatible — not bundled per chunk.** The consumer app mounts `<BridgeSharedDepsProvider>` above any `<RemoteComponent>` usage, which publishes its own `React`/`ReactDOM` instances onto `window.__bridgeShared`. Separately, the consumer's `next.config.ts` calls `sharedDepsConfig({ provides: ['react', 'react-dom'], outputPath })`, writing a small contract file with its declared versions. Each exposing app's build (`tsup.config.ts` + `shared-dep-resolver`) reads that contract and compares it against its own React version: if compatible (same major, its minor ≤ the consumer's), esbuild aliases `react`/`react-dom` to thin shims that read off `window.__bridgeShared` instead of bundling the real package, so the chunk ships no React of its own. If incompatible, the chunk falls back to bundling its own React — so the host and consumer *can* still run different minor versions, they just don't share a runtime unless they're close enough for it to be safe. `assertSharedDepsAvailable` throws at mount time if a chunk claims `external: true` but the singleton isn't actually present. See `apps/Readme.md` for a concrete walkthrough against the `/demo/ecommerce` example.
 
 ### Setup — Host App
 
@@ -267,15 +271,45 @@ export default shareConfig({
     './Button': './src/components/Button.tsx',
     './Header': './src/components/Header.tsx',
   },
-  shared: {
-    react: { singleton: true },
-  },
+  shared: { react: {}, 'react-dom': {} },
+  // Path to the contract the consumer app wrote via sharedDepsConfig() (below) —
+  // read at build time to decide whether this app's React can be externalized.
+  sharedContractPath: '../../packages/share/shared-contract.json',
 })({
   // ...your existing Next config
 });
 ```
 
 This writes `public/share-manifest.json` at config-evaluation time (before Turbopack starts) and re-writes it on every Webpack compile.
+
+The consumer/shell app declares the versions it's willing to share, and mounts the provider that publishes them at runtime:
+
+```ts
+// apps/web/next.config.ts (the consumer/shell app)
+import { sharedDepsConfig } from '@bridge/share/next-config-helper';
+
+export default sharedDepsConfig({
+  provides: ['react', 'react-dom'],
+  outputPath: '../../packages/share/shared-contract.json',
+})({
+  // ...your existing Next config
+});
+```
+
+```tsx
+// apps/web/app/layout.tsx
+import { BridgeSharedDepsProvider } from '@bridge/share';
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en">
+      <body>
+        <BridgeSharedDepsProvider>{children}</BridgeSharedDepsProvider>
+      </body>
+    </html>
+  );
+}
+```
 
 The chunk itself must export a default `MountFunction`:
 
@@ -399,7 +433,7 @@ packages/
 docs/           Spec and implementation plan
 ```
 
-**Toolchain:** pnpm workspaces · Turbo · tsup · Vitest · Playwright · Changesets
+**Toolchain:** pnpm workspaces · Turbo · tsup · Vitest · Playwright · semantic-release
 
 ```bash
 pnpm install          # install all deps
@@ -409,6 +443,24 @@ pnpm test             # unit tests (Vitest)
 pnpm test:e2e         # end-to-end tests (Playwright)
 pnpm type-check       # TypeScript across the monorepo
 ```
+
+---
+
+## Commit Convention & Releases
+
+Commit messages must follow [Conventional Commits](https://www.conventionalcommits.org/) (`feat: ...`, `fix: ...`, `feat(share)!: ...` for a breaking change, etc.) — this is what drives versioning, so it's enforced two ways:
+
+- **Locally:** a Husky `commit-msg` hook runs `commitlint` against every commit.
+- **In CI:** the `commitlint` job in `.github/workflows/ci.yml` lints every commit on a pull request.
+
+Each of the three packages (`packages/lazy-handler`, `packages/hydration`, `packages/share`) releases **independently** via [semantic-release](https://semantic-release.gitbook.io/), using [`semantic-release-monorepo`](https://github.com/pmowrer/semantic-release-monorepo) to scope commit analysis to only the commits that touched that package's own directory. On every push to `main`, `.github/workflows/release.yml`:
+
+1. Runs `semantic-release` for each package in turn.
+2. Determines the next version from the commit types since that package's last release tag (`fix:` → patch, `feat:` → minor, `!`/`BREAKING CHANGE:` → major).
+3. Publishes to npm, generates/updates that package's `CHANGELOG.md`, tags the release (e.g. `@bridge/share@1.2.0`), and opens a GitHub Release.
+4. A change to only one package does not version-bump the others.
+
+This requires an `NPM_TOKEN` repo secret (an npm automation token with publish access to the `@bridge` scope) — `GITHUB_TOKEN` is provided automatically by Actions. Until `NPM_TOKEN` is set and a `feat`/`fix` commit lands on `main`, the release job will run and fail at the npm-auth step by design; nothing publishes accidentally.
 
 ---
 
@@ -446,6 +498,12 @@ These are gaps in the current implementation that are on the roadmap but not yet
 - `@bridge/hydration`**: no code-splitting integration.** The boundary defers hydration but the bundle is still sent eagerly. First-class `next/dynamic` + boundary composition is not wired up yet.
 - `@bridge/hydration`**:** `strategy="interaction"` **triggers on any pointer contact.** There is no way to narrow the trigger to a specific event type (e.g. `click` only) through the declarative API. Use `withHydrationBoundary` with `useHydrationState` to build a custom trigger.
 - `@bridge/share`**: no hot-reload for remote chunks.** After the host rebuilds a chunk, the consumer must reload the page or call `bustManifestCache()` to pick up changes.
-- `@bridge/share`**: no shared singleton enforcement at runtime.** The `shared.singleton` field is written to the manifest but the loader does not currently inspect it to deduplicate React instances. Each chunk creates its own root unconditionally.
+- `@bridge/share`**: shared-dep compatibility check is major/minor only.** `resolveSharedDeps` treats "same major, own minor ≤ consumer's minor" as compatible and externalizes React on that basis — it doesn't account for patch-level breaking changes (rare, but not impossible) or peer libraries beyond React/React-DOM.
 - **No Edge Runtime support.** All three packages use browser APIs (`IntersectionObserver`, `requestIdleCallback`, `document`, `createRoot`) and are bundled for the browser. They cannot be imported in Next.js middleware or Edge routes.
 - **React 18 minimum.** Packages use `createRoot` and `Suspense` APIs introduced in React 18.
+
+---
+
+## License
+
+[MIT](./LICENSE)

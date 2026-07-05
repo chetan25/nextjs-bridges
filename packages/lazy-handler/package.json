@@ -2,6 +2,16 @@
   "name": "@bridge/lazy-handler",
   "version": "0.1.0-alpha",
   "description": "Defer React event handler JS until first user interaction — Qwik-style O(1) hydration cost",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/chetan25/nextjs-bridges.git",
+    "directory": "packages/lazy-handler"
+  },
+  "bugs": "https://github.com/chetan25/nextjs-bridges/issues",
+  "publishConfig": {
+    "access": "public"
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",

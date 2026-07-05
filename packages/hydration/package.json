@@ -2,6 +2,16 @@
   "name": "@bridge/hydration",
   "version": "0.1.0-alpha",
   "description": "Declarative hydration boundaries for Next.js 15 — defer Client Component hydration until a chosen strategy fires",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/chetan25/nextjs-bridges.git",
+    "directory": "packages/hydration"
+  },
+  "bugs": "https://github.com/chetan25/nextjs-bridges/issues",
+  "publishConfig": {
+    "access": "public"
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",

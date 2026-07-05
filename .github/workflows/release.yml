@@ -10,6 +10,11 @@ jobs:
   release:
     name: Release
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+      id-token: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -28,10 +33,30 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Create Release Pull Request or Publish
-        uses: changesets/action@v1
-        with:
-          publish: pnpm release
+      - name: Build packages
+        run: pnpm --filter "./packages/*" build
+
+      # Each package releases independently — semantic-release-monorepo scopes
+      # commit analysis (and the git tag it creates, e.g. @bridge/share@1.2.0)
+      # to commits that touched that package's own directory, so a change to
+      # only one package doesn't bump the others.
+      - name: Release @bridge/lazy-handler
+        working-directory: packages/lazy-handler
+        run: npx semantic-release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Release @bridge/hydration
+        working-directory: packages/hydration
+        run: npx semantic-release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Release @bridge/share
+        working-directory: packages/share
+        run: npx semantic-release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}

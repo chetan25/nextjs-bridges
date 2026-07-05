@@ -7,6 +7,17 @@ on:
     branches: [main]
 
 jobs:
+  commitlint:
+    name: Commit messages
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: wagoid/commitlint-github-action@v6
+
   ci:
     name: CI
     runs-on: ubuntu-latest
