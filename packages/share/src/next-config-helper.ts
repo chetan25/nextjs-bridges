@@ -77,7 +77,7 @@ export function generateShareManifest(
 }
 
 /**
- * Next.js config wrapper for host apps that expose components via @bridge/share.
+ * Next.js config wrapper for host apps that expose components via @chetand/share.
  *
  * Generates `public/share-manifest.json` during config evaluation so it is
  * available before Turbopack starts serving. For Webpack builds it also
@@ -85,7 +85,7 @@ export function generateShareManifest(
  *
  * @example
  * // apps/host/next.config.ts
- * import { shareConfig } from '@bridge/share/next-config-helper';
+ * import { shareConfig } from '@chetand/share/next-config-helper';
  * export default shareConfig({
  *   name: 'host-app',
  *   baseUrl: 'http://localhost:3001',

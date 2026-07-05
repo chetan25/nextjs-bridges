@@ -1,13 +1,13 @@
-# @bridge/lazy-handler
+# @chetand/lazy-handler
 
 > Defer React event handler JS until first user interaction — Qwik-style O(1) hydration cost.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](../../LICENSE)
 
-Part of the [`bridges`](https://github.com/chetan25/nextjs-bridges) monorepo — see the [root README](https://github.com/chetan25/nextjs-bridges#readme) for how this fits alongside `@bridge/hydration` and `@bridge/share`, and `apps/web`'s `/demo/ecommerce` page for all three working together.
+Part of the [`bridges`](https://github.com/chetan25/nextjs-bridges) monorepo — see the [root README](https://github.com/chetan25/nextjs-bridges#readme) for how this fits alongside `@chetand/hydration` and `@chetand/share`, and `apps/web`'s `/demo/ecommerce` page for all three working together.
 
 ```bash
-pnpm add @bridge/lazy-handler
+pnpm add @chetand/lazy-handler
 ```
 
 ## The problem
@@ -33,7 +33,7 @@ The core hook. Returns a `[ref, stub]` tuple.
 
 ```tsx
 'use client';
-import { useLazyHandler } from '@bridge/lazy-handler';
+import { useLazyHandler } from '@chetand/lazy-handler';
 
 export function NotifyButton() {
   const [ref] = useLazyHandler<HTMLButtonElement>(
@@ -67,7 +67,7 @@ export default function notify(event: Event) {
 A declarative wrapper that removes the need to manage refs manually. Renders as a `<span>` by default; use the `as` prop to change the element type.
 
 ```tsx
-import { Interactive } from '@bridge/lazy-handler';
+import { Interactive } from '@chetand/lazy-handler';
 
 <Interactive on={{ click: () => import('./handlers/notify') }}>
   <button>Notify me</button>
@@ -93,7 +93,7 @@ import { Interactive } from '@bridge/lazy-handler';
 Higher-order component. Wraps an existing component without changing its JSX at the call site.
 
 ```tsx
-import { withLazyHandlers } from '@bridge/lazy-handler';
+import { withLazyHandlers } from '@chetand/lazy-handler';
 import { Button } from './Button';
 
 const LazyButton = withLazyHandlers(Button, {

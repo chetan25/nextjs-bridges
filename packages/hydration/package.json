@@ -1,5 +1,5 @@
 {
-  "name": "@bridge/hydration",
+  "name": "@chetand/hydration",
   "version": "0.1.0-alpha",
   "description": "Declarative hydration boundaries for Next.js 15 — defer Client Component hydration until a chosen strategy fires",
   "license": "MIT",
@@ -39,7 +39,7 @@
     "react-dom": ">=18"
   },
   "devDependencies": {
-    "@bridge/tsconfig": "workspace:*",
+    "@chetand/tsconfig": "workspace:*",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.0.0",
     "@testing-library/user-event": "^14.5.0",

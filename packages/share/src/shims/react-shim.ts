@@ -5,7 +5,7 @@
 const react = (globalThis as { __bridgeShared?: Record<string, any> }).__bridgeShared?.react;
 if (!react) {
   throw new Error(
-    '@bridge/share: window.__bridgeShared.react was not available when this chunk loaded. ' +
+    '@chetand/share: window.__bridgeShared.react was not available when this chunk loaded. ' +
       'Make sure <BridgeSharedDepsProvider> wraps the page before any remote component mounts.',
   );
 }

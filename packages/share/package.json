@@ -1,5 +1,5 @@
 {
-  "name": "@bridge/share",
+  "name": "@chetand/share",
   "version": "0.1.0-alpha",
   "description": "Runtime cross-app component sharing for Next.js 15 + Turbopack — manifest-based Module Federation alternative",
   "license": "MIT",
@@ -46,7 +46,7 @@
     "react-dom": ">=18"
   },
   "devDependencies": {
-    "@bridge/tsconfig": "workspace:*",
+    "@chetand/tsconfig": "workspace:*",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.0.0",
     "@types/react": "^18.3.0",

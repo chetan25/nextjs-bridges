@@ -1,5 +1,5 @@
 import type { NextConfig } from 'next';
-import { shareConfig } from '@bridge/share/next-config-helper';
+import { shareConfig } from '@chetand/share/next-config-helper';
 
 const nextConfig: NextConfig = {
   // Allow cross-origin requests so apps/web (port 3000) can load

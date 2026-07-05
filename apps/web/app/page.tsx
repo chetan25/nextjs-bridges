@@ -8,17 +8,17 @@ export default function HomePage() {
         <ul>
           <li>
             <Link href="/demo/lazy-handler">
-              @bridge/lazy-handler — deferred event handlers
+              @chetand/lazy-handler — deferred event handlers
             </Link>
           </li>
           <li>
             <Link href="/demo/hydration">
-              @bridge/hydration — declarative hydration strategies
+              @chetand/hydration — declarative hydration strategies
             </Link>
           </li>
           <li>
             <Link href="/demo/share">
-              @bridge/share — runtime cross-app component sharing
+              @chetand/share — runtime cross-app component sharing
             </Link>
           </li>
           <li>

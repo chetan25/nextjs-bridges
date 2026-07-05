@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import { HydrationBoundary, useHydrationState } from '@bridge/hydration';
+import { HydrationBoundary, useHydrationState } from '@chetand/hydration';
 import { HeavyWidget } from './heavy-widget';
 
 // Fallback skeleton used across all demos

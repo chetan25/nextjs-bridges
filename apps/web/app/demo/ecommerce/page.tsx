@@ -1,6 +1,6 @@
 'use client';
-import { HydrationBoundary } from '@bridge/hydration';
-import { RemoteComponent } from '@bridge/share';
+import { HydrationBoundary } from '@chetand/hydration';
+import { RemoteComponent } from '@chetand/share';
 import { Header } from './components/header';
 import { Footer } from './components/footer';
 import { PanelSkeleton } from './components/panel-skeleton';

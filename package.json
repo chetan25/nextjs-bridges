@@ -1,5 +1,5 @@
 {
-  "name": "@bridge/monorepo",
+  "name": "@chetand/monorepo",
   "private": true,
   "license": "MIT",
   "packageManager": "pnpm@9.0.0",

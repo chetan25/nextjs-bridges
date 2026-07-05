@@ -1,13 +1,13 @@
-# @bridge/share
+# @chetand/share
 
 > Runtime cross-app component sharing for Next.js 15 + Turbopack — a manifest-based alternative to Webpack Module Federation.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](../../LICENSE)
 
-Part of the [`bridges`](https://github.com/chetan25/nextjs-bridges) monorepo — see the [root README](https://github.com/chetan25/nextjs-bridges#readme) for how this fits alongside `@bridge/lazy-handler` and `@bridge/hydration`, and [`apps/Readme.md`](https://github.com/chetan25/nextjs-bridges/blob/main/apps/Readme.md) for a full walkthrough against the `/demo/ecommerce` example (three apps, two teams' widgets, a shared React singleton).
+Part of the [`bridges`](https://github.com/chetan25/nextjs-bridges) monorepo — see the [root README](https://github.com/chetan25/nextjs-bridges#readme) for how this fits alongside `@chetand/lazy-handler` and `@chetand/hydration`, and [`apps/Readme.md`](https://github.com/chetan25/nextjs-bridges/blob/main/apps/Readme.md) for a full walkthrough against the `/demo/ecommerce` example (three apps, two teams' widgets, a shared React singleton).
 
 ```bash
-pnpm add @bridge/share
+pnpm add @chetand/share
 ```
 
 ## The problem
@@ -16,7 +16,7 @@ Module Federation let one Next.js app serve components to another at runtime. Tu
 
 ## How it works
 
-`@bridge/share` implements a lightweight alternative to Webpack Module Federation that works with Turbopack.
+`@chetand/share` implements a lightweight alternative to Webpack Module Federation that works with Turbopack.
 
 **Host app (exposes components):**
 
@@ -35,7 +35,7 @@ Module Federation let one Next.js app serve components to another at runtime. Tu
 
 ```ts
 // apps/host/next.config.ts
-import { shareConfig } from '@bridge/share/next-config-helper';
+import { shareConfig } from '@chetand/share/next-config-helper';
 
 export default shareConfig({
   name: 'host-app',
@@ -75,7 +75,7 @@ The consumer/shell app declares the versions it's willing to share, and mounts t
 
 ```ts
 // apps/web/next.config.ts (the consumer/shell app)
-import { sharedDepsConfig } from '@bridge/share/next-config-helper';
+import { sharedDepsConfig } from '@chetand/share/next-config-helper';
 
 export default sharedDepsConfig({
   provides: ['react', 'react-dom'],
@@ -87,7 +87,7 @@ export default sharedDepsConfig({
 
 ```tsx
 // apps/web/app/layout.tsx
-import { BridgeSharedDepsProvider } from '@bridge/share';
+import { BridgeSharedDepsProvider } from '@chetand/share';
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -104,7 +104,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
 ```tsx
 'use client';
-import { useRemoteComponent } from '@bridge/share';
+import { useRemoteComponent } from '@chetand/share';
 
 export function RemoteButtonSlot() {
   const { mount, loading, error } = useRemoteComponent(
@@ -127,7 +127,7 @@ export function RemoteButtonSlot() {
 The declarative wrapper. Handles the container div and cleanup automatically.
 
 ```tsx
-import { RemoteComponent, RemoteErrorBoundary } from '@bridge/share';
+import { RemoteComponent, RemoteErrorBoundary } from '@chetand/share';
 
 <RemoteErrorBoundary fallback={<p>Remote unavailable</p>}>
   <RemoteComponent
@@ -144,7 +144,7 @@ import { RemoteComponent, RemoteErrorBoundary } from '@bridge/share';
 Fetch a manifest directly. Returns a cached promise (5-minute TTL). Re-fetches on failure without caching the error.
 
 ```ts
-import { loadManifest, bustManifestCache } from '@bridge/share';
+import { loadManifest, bustManifestCache } from '@chetand/share';
 
 const manifest = await loadManifest('http://localhost:3001/share-manifest.json');
 
@@ -157,7 +157,7 @@ bustManifestCache('http://localhost:3001/share-manifest.json');
 Optional version compatibility check before mounting.
 
 ```ts
-import { checkVersion } from '@bridge/share';
+import { checkVersion } from '@chetand/share';
 
 const compatible = checkVersion(manifest, '^1.0.0');
 if (!compatible) throw new Error('Host app version incompatible');
@@ -169,7 +169,7 @@ If you don't want the `next.config.ts` wrapper, call this directly from a `prebu
 
 ```js
 // scripts/generate-manifest.js
-const { generateShareManifest } = require('@bridge/share/next-config-helper');
+const { generateShareManifest } = require('@chetand/share/next-config-helper');
 
 generateShareManifest({
   name: 'host-app',
@@ -182,7 +182,7 @@ generateShareManifest({
 
 ## Gotchas
 
-- **Chunks are not automatically built by** `@bridge/share`**.** The library provides the manifest format and runtime loader; you are responsible for building each exposed chunk as a standalone JS file (e.g. via tsup or a custom Turbopack entry). See `apps/host/tsup.config.ts` for a reference.
+- **Chunks are not automatically built by** `@chetand/share`**.** The library provides the manifest format and runtime loader; you are responsible for building each exposed chunk as a standalone JS file (e.g. via tsup or a custom Turbopack entry). See `apps/host/tsup.config.ts` for a reference.
 - **Each chunk manages its own React root** unless externalized via the shared-dep mechanism above. Props are passed as plain `Record<string, unknown>` — no React context, no shared state, no event bubbling across the root boundary. If you need context (theme, auth), pass it as serialisable props or re-create the provider inside the chunk.
 - `baseUrl` **must be absolute in production.** The manifest resolver prepends `baseUrl` to chunk paths. In development you can use `http://localhost:3001`; in production set it to the host app's public origin.
 - **CORS.** The consumer fetches the manifest and chunks from the host's origin. Configure the host's Next.js response headers to allow the consumer's origin.

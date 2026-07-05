@@ -1,5 +1,5 @@
 {
-  "name": "@bridge/lazy-handler",
+  "name": "@chetand/lazy-handler",
   "version": "0.1.0-alpha",
   "description": "Defer React event handler JS until first user interaction — Qwik-style O(1) hydration cost",
   "license": "MIT",
@@ -44,7 +44,7 @@
     "react-dom": ">=18"
   },
   "devDependencies": {
-    "@bridge/tsconfig": "workspace:*",
+    "@chetand/tsconfig": "workspace:*",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.0.0",
     "@testing-library/user-event": "^14.5.0",

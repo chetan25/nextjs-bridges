@@ -1,6 +1,6 @@
 import { defineConfig } from 'tsup';
 import { resolve } from 'path';
-import { loadSharedDepDecisions, loadOwnVersions } from '@bridge/share/shared-dep-resolver';
+import { loadSharedDepDecisions, loadOwnVersions } from '@chetand/share/shared-dep-resolver';
 
 const SHARED = { react: {}, 'react-dom': {} };
 const ownVersions = loadOwnVersions(SHARED, resolve(process.cwd(), 'package.json'));
@@ -23,7 +23,7 @@ export default defineConfig({
   sourcemap: false,
   dts: false,
   clean: false,
-  noExternal: [/react/, '@bridge/lazy-handler'],
+  noExternal: [/react/, '@chetand/lazy-handler'],
   esbuildOptions(options) {
     options.alias = {
       ...options.alias,

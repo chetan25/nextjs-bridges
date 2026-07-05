@@ -1,5 +1,5 @@
 {
-  "extends": "@bridge/tsconfig/base.json",
+  "extends": "@chetand/tsconfig/base.json",
   "compilerOptions": {
     "plugins": [
       {

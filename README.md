@@ -24,19 +24,19 @@ Next.js 15+ Turbopack removed Webpack Module Federation and introduced a stricte
 
 | Package                                       | Purpose                                        | Install                         |
 | --------------------------------------------- | ---------------------------------------------- | ------------------------------- |
-| `[@bridge/lazy-handler](#bridgelazy-handler)` | Defer event handler JS until first interaction | `pnpm add @bridge/lazy-handler` |
-| `[@bridge/hydration](#bridgehydration)`       | Control when a Client Component hydrates       | `pnpm add @bridge/hydration`    |
-| `[@bridge/share](#bridgeshare)`               | Runtime cross-app component sharing            | `pnpm add @bridge/share`        |
+| `[@chetand/lazy-handler](#bridgelazy-handler)` | Defer event handler JS until first interaction | `pnpm add @chetand/lazy-handler` |
+| `[@chetand/hydration](#bridgehydration)`       | Control when a Client Component hydrates       | `pnpm add @chetand/hydration`    |
+| `[@chetand/share](#bridgeshare)`               | Runtime cross-app component sharing            | `pnpm add @chetand/share`        |
 
 All three are `'use client'` libraries. They are side-effect-free on the server and tree-shakeable.
 
-> **Status:** these packages are not yet published to npm — the release pipeline (see [Commit Convention & Releases](#commit-convention--releases)) is wired up but hasn't cut a first version yet. Until then, `pnpm add @bridge/...` won't resolve; install from this repo via `pnpm add @bridge/lazy-handler@workspace:*` if you're working inside the monorepo, or watch the repo for the first tagged release.
+> **Status:** these packages are not yet published to npm — the release pipeline (see [Commit Convention & Releases](#commit-convention--releases)) is wired up but hasn't cut a first version yet. Until then, `pnpm add @chetand/...` won't resolve; install from this repo via `pnpm add @chetand/lazy-handler@workspace:*` if you're working inside the monorepo, or watch the repo for the first tagged release.
 
-> **See all three working together:** `apps/web`'s `/demo/ecommerce` page composes a small multi-team storefront — a Shell-owned header/footer, a Checkout team's cart widget, and a Home/Recommendations team's product widgets — using `@bridge/share` to load them, `@bridge/hydration` to defer their mount, and `@bridge/lazy-handler` to defer their interaction JS. Run `pnpm dev` from the repo root and open `http://localhost:3000/demo/ecommerce`.
+> **See all three working together:** `apps/web`'s `/demo/ecommerce` page composes a small multi-team storefront — a Shell-owned header/footer, a Checkout team's cart widget, and a Home/Recommendations team's product widgets — using `@chetand/share` to load them, `@chetand/hydration` to defer their mount, and `@chetand/lazy-handler` to defer their interaction JS. Run `pnpm dev` from the repo root and open `http://localhost:3000/demo/ecommerce`.
 
 ---
 
-## `@bridge/lazy-handler`
+## `@chetand/lazy-handler`
 
 ### How it works
 
@@ -57,7 +57,7 @@ The core hook. Returns a `[ref, stub]` tuple.
 
 ```tsx
 'use client';
-import { useLazyHandler } from '@bridge/lazy-handler';
+import { useLazyHandler } from '@chetand/lazy-handler';
 
 export function NotifyButton() {
   const [ref] = useLazyHandler<HTMLButtonElement>(
@@ -91,7 +91,7 @@ export default function notify(event: Event) {
 A declarative wrapper that removes the need to manage refs manually. Renders as a `<span>` by default; use the `as` prop to change the element type.
 
 ```tsx
-import { Interactive } from '@bridge/lazy-handler';
+import { Interactive } from '@chetand/lazy-handler';
 
 <Interactive on={{ click: () => import('./handlers/notify') }}>
   <button>Notify me</button>
@@ -117,7 +117,7 @@ import { Interactive } from '@bridge/lazy-handler';
 Higher-order component. Wraps an existing component without changing its JSX at the call site.
 
 ```tsx
-import { withLazyHandlers } from '@bridge/lazy-handler';
+import { withLazyHandlers } from '@chetand/lazy-handler';
 import { Button } from './Button';
 
 const LazyButton = withLazyHandlers(Button, {
@@ -139,7 +139,7 @@ const LazyButton = withLazyHandlers(Button, {
 
 ---
 
-## `@bridge/hydration`
+## `@chetand/hydration`
 
 ### How it works
 
@@ -152,7 +152,7 @@ This is purely a React-level deferral. The component JS is still bundled; hydrat
 #### `<HydrationBoundary>`
 
 ```tsx
-import { HydrationBoundary } from '@bridge/hydration';
+import { HydrationBoundary } from '@chetand/hydration';
 
 <HydrationBoundary
   strategy="visible"
@@ -189,7 +189,7 @@ import { HydrationBoundary } from '@bridge/hydration';
 Reads the nearest boundary's hydration state and imperative trigger. Must be called inside a `<HydrationBoundary>` — most useful inside a `fallback` slot to place a "Load now" button.
 
 ```tsx
-import { useHydrationState } from '@bridge/hydration';
+import { useHydrationState } from '@chetand/hydration';
 
 function ManualFallback() {
   const { hydrated, hydrateNow } = useHydrationState();
@@ -206,7 +206,7 @@ function ManualFallback() {
 HOC version. Wraps a component in a boundary without changing its usage.
 
 ```tsx
-import { withHydrationBoundary } from '@bridge/hydration';
+import { withHydrationBoundary } from '@chetand/hydration';
 
 const LazyChart = withHydrationBoundary(Chart, {
   strategy: 'visible',
@@ -238,11 +238,11 @@ Boundaries nest independently. Each has its own trigger and state.
 
 ---
 
-## `@bridge/share`
+## `@chetand/share`
 
 ### How it works
 
-`@bridge/share` implements a lightweight alternative to Webpack Module Federation that works with Turbopack.
+`@chetand/share` implements a lightweight alternative to Webpack Module Federation that works with Turbopack.
 
 **Host app (exposes components):**
 
@@ -261,7 +261,7 @@ Boundaries nest independently. Each has its own trigger and state.
 
 ```ts
 // apps/host/next.config.ts
-import { shareConfig } from '@bridge/share/next-config-helper';
+import { shareConfig } from '@chetand/share/next-config-helper';
 
 export default shareConfig({
   name: 'host-app',
@@ -286,7 +286,7 @@ The consumer/shell app declares the versions it's willing to share, and mounts t
 
 ```ts
 // apps/web/next.config.ts (the consumer/shell app)
-import { sharedDepsConfig } from '@bridge/share/next-config-helper';
+import { sharedDepsConfig } from '@chetand/share/next-config-helper';
 
 export default sharedDepsConfig({
   provides: ['react', 'react-dom'],
@@ -298,7 +298,7 @@ export default sharedDepsConfig({
 
 ```tsx
 // apps/web/app/layout.tsx
-import { BridgeSharedDepsProvider } from '@bridge/share';
+import { BridgeSharedDepsProvider } from '@chetand/share';
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -331,7 +331,7 @@ export default function mount(container: HTMLElement, props: Record<string, unkn
 
 ```tsx
 'use client';
-import { useRemoteComponent } from '@bridge/share';
+import { useRemoteComponent } from '@chetand/share';
 
 export function RemoteButtonSlot() {
   const { mount, loading, error } = useRemoteComponent(
@@ -354,7 +354,7 @@ export function RemoteButtonSlot() {
 The declarative wrapper. Handles the container div and cleanup automatically.
 
 ```tsx
-import { RemoteComponent, RemoteErrorBoundary } from '@bridge/share';
+import { RemoteComponent, RemoteErrorBoundary } from '@chetand/share';
 
 <RemoteErrorBoundary fallback={<p>Remote unavailable</p>}>
   <RemoteComponent
@@ -371,7 +371,7 @@ import { RemoteComponent, RemoteErrorBoundary } from '@bridge/share';
 Fetch a manifest directly. Returns a cached promise (5-minute TTL). Re-fetches on failure without caching the error.
 
 ```ts
-import { loadManifest, bustManifestCache } from '@bridge/share';
+import { loadManifest, bustManifestCache } from '@chetand/share';
 
 const manifest = await loadManifest('http://localhost:3001/share-manifest.json');
 
@@ -384,7 +384,7 @@ bustManifestCache('http://localhost:3001/share-manifest.json');
 Optional version compatibility check before mounting.
 
 ```ts
-import { checkVersion } from '@bridge/share';
+import { checkVersion } from '@chetand/share';
 
 const compatible = checkVersion(manifest, '^1.0.0');
 if (!compatible) throw new Error('Host app version incompatible');
@@ -396,7 +396,7 @@ If you don't want the `next.config.ts` wrapper, call this directly from a `prebu
 
 ```js
 // scripts/generate-manifest.js
-const { generateShareManifest } = require('@bridge/share/next-config-helper');
+const { generateShareManifest } = require('@chetand/share/next-config-helper');
 
 generateShareManifest({
   name: 'host-app',
@@ -409,7 +409,7 @@ generateShareManifest({
 
 ### Gotchas
 
-- **Chunks are not automatically built by** `@bridge/share`**.** The library provides the manifest format and runtime loader; you are responsible for building each exposed chunk as a standalone JS file (e.g. via tsup or a custom Turbopack entry). See `apps/host/tsup.config.ts` for a reference.
+- **Chunks are not automatically built by** `@chetand/share`**.** The library provides the manifest format and runtime loader; you are responsible for building each exposed chunk as a standalone JS file (e.g. via tsup or a custom Turbopack entry). See `apps/host/tsup.config.ts` for a reference.
 - **Each chunk manages its own React root.** Props are passed as plain `Record<string, unknown>` — no React context, no shared state, no event bubbling across the root boundary. If you need context (theme, auth), pass it as serialisable props or re-create the provider inside the chunk.
 - `baseUrl` **must be absolute in production.** The manifest resolver prepends `baseUrl` to chunk paths. In development you can use `http://localhost:3001`; in production set it to the host app's public origin.
 - **CORS.** The consumer fetches the manifest and chunks from the host's origin. Configure the host's Next.js response headers to allow the consumer's origin.
@@ -427,9 +427,9 @@ apps/
   host/         Second Next.js app — Checkout team (serves ./Button and ./CartWidget)
   storefront/   Third Next.js app — Home + Recommendations teams (serves ./HomeWidget, ./PopularProductsPanel)
 packages/
-  lazy-handler/ @bridge/lazy-handler source
-  hydration/    @bridge/hydration source
-  share/        @bridge/share source
+  lazy-handler/ @chetand/lazy-handler source
+  hydration/    @chetand/hydration source
+  share/        @chetand/share source
 docs/           Spec and implementation plan
 ```
 
@@ -457,7 +457,7 @@ Each of the three packages (`packages/lazy-handler`, `packages/hydration`, `pack
 
 1. Runs `semantic-release` for each package in turn.
 2. Determines the next version from the commit types since that package's last release tag (`fix:` → patch, `feat:` → minor, `!`/`BREAKING CHANGE:` → major).
-3. Publishes to npm, generates/updates that package's `CHANGELOG.md`, tags the release (e.g. `@bridge/share@1.2.0`), and opens a GitHub Release.
+3. Publishes to npm, generates/updates that package's `CHANGELOG.md`, tags the release (e.g. `@chetand/share@1.2.0`), and opens a GitHub Release.
 4. A change to only one package does not version-bump the others.
 
 This requires an `NPM_TOKEN` repo secret (an npm automation token with publish access to the `@bridge` scope) — `GITHUB_TOKEN` is provided automatically by Actions. Until `NPM_TOKEN` is set and a `feat`/`fix` commit lands on `main`, the release job will run and fail at the npm-auth step by design; nothing publishes accidentally.
@@ -494,11 +494,11 @@ C:/Program Files/nodejs/node.exe: error while loading shared libraries: ?: canno
 
 These are gaps in the current implementation that are on the roadmap but not yet shipped:
 
-- `@bridge/lazy-handler`**: no loading state API.** The stub fires the real handler after the `import()` resolves but there is no built-in way to show a spinner during the load. You can work around this by managing state in the parent component.
-- `@bridge/hydration`**: no code-splitting integration.** The boundary defers hydration but the bundle is still sent eagerly. First-class `next/dynamic` + boundary composition is not wired up yet.
-- `@bridge/hydration`**:** `strategy="interaction"` **triggers on any pointer contact.** There is no way to narrow the trigger to a specific event type (e.g. `click` only) through the declarative API. Use `withHydrationBoundary` with `useHydrationState` to build a custom trigger.
-- `@bridge/share`**: no hot-reload for remote chunks.** After the host rebuilds a chunk, the consumer must reload the page or call `bustManifestCache()` to pick up changes.
-- `@bridge/share`**: shared-dep compatibility check is major/minor only.** `resolveSharedDeps` treats "same major, own minor ≤ consumer's minor" as compatible and externalizes React on that basis — it doesn't account for patch-level breaking changes (rare, but not impossible) or peer libraries beyond React/React-DOM.
+- `@chetand/lazy-handler`**: no loading state API.** The stub fires the real handler after the `import()` resolves but there is no built-in way to show a spinner during the load. You can work around this by managing state in the parent component.
+- `@chetand/hydration`**: no code-splitting integration.** The boundary defers hydration but the bundle is still sent eagerly. First-class `next/dynamic` + boundary composition is not wired up yet.
+- `@chetand/hydration`**:** `strategy="interaction"` **triggers on any pointer contact.** There is no way to narrow the trigger to a specific event type (e.g. `click` only) through the declarative API. Use `withHydrationBoundary` with `useHydrationState` to build a custom trigger.
+- `@chetand/share`**: no hot-reload for remote chunks.** After the host rebuilds a chunk, the consumer must reload the page or call `bustManifestCache()` to pick up changes.
+- `@chetand/share`**: shared-dep compatibility check is major/minor only.** `resolveSharedDeps` treats "same major, own minor ≤ consumer's minor" as compatible and externalizes React on that basis — it doesn't account for patch-level breaking changes (rare, but not impossible) or peer libraries beyond React/React-DOM.
 - **No Edge Runtime support.** All three packages use browser APIs (`IntersectionObserver`, `requestIdleCallback`, `document`, `createRoot`) and are bundled for the browser. They cannot be imported in Next.js middleware or Edge routes.
 - **React 18 minimum.** Packages use `createRoot` and `Suspense` APIs introduced in React 18.
 

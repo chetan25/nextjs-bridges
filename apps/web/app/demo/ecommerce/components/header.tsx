@@ -1,7 +1,7 @@
 'use client';
-import { HydrationBoundary } from '@bridge/hydration';
-import { RemoteComponent } from '@bridge/share';
-import { useLazyHandler } from '@bridge/lazy-handler/use-lazy-handler';
+import { HydrationBoundary } from '@chetand/hydration';
+import { RemoteComponent } from '@chetand/share';
+import { useLazyHandler } from '@chetand/lazy-handler/use-lazy-handler';
 import { StaticCartIcon } from './static-cart-icon';
 
 const HOST_MANIFEST = 'http://localhost:3001/share-manifest.json';

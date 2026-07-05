@@ -83,10 +83,10 @@ importers:
 
   apps/host:
     dependencies:
-      '@bridge/lazy-handler':
+      '@chetand/lazy-handler':
         specifier: workspace:*
         version: link:../../packages/lazy-handler
-      '@bridge/share':
+      '@chetand/share':
         specifier: workspace:*
         version: link:../../packages/share
       next:
@@ -99,7 +99,7 @@ importers:
         specifier: ^18.3.0
         version: 18.3.1(react@18.3.1)
     devDependencies:
-      '@bridge/tsconfig':
+      '@chetand/tsconfig':
         specifier: workspace:*
         version: link:../../packages/tsconfig
       '@types/react':
@@ -117,10 +117,10 @@ importers:
 
   apps/storefront:
     dependencies:
-      '@bridge/lazy-handler':
+      '@chetand/lazy-handler':
         specifier: workspace:*
         version: link:../../packages/lazy-handler
-      '@bridge/share':
+      '@chetand/share':
         specifier: workspace:*
         version: link:../../packages/share
       next:
@@ -133,7 +133,7 @@ importers:
         specifier: ^18.3.0
         version: 18.3.1(react@18.3.1)
     devDependencies:
-      '@bridge/tsconfig':
+      '@chetand/tsconfig':
         specifier: workspace:*
         version: link:../../packages/tsconfig
       '@types/react':
@@ -151,13 +151,13 @@ importers:
 
   apps/web:
     dependencies:
-      '@bridge/hydration':
+      '@chetand/hydration':
         specifier: workspace:*
         version: link:../../packages/hydration
-      '@bridge/lazy-handler':
+      '@chetand/lazy-handler':
         specifier: workspace:*
         version: link:../../packages/lazy-handler
-      '@bridge/share':
+      '@chetand/share':
         specifier: workspace:*
         version: link:../../packages/share
       next:
@@ -170,7 +170,7 @@ importers:
         specifier: ^18.3.0
         version: 18.3.1(react@18.3.1)
     devDependencies:
-      '@bridge/tsconfig':
+      '@chetand/tsconfig':
         specifier: workspace:*
         version: link:../../packages/tsconfig
       '@types/react':
@@ -195,7 +195,7 @@ importers:
         specifier: '>=18'
         version: 18.3.1(react@18.3.1)
     devDependencies:
-      '@bridge/tsconfig':
+      '@chetand/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
       '@testing-library/jest-dom':
@@ -241,7 +241,7 @@ importers:
         specifier: '>=18'
         version: 18.3.1(react@18.3.1)
     devDependencies:
-      '@bridge/tsconfig':
+      '@chetand/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
       '@testing-library/jest-dom':
@@ -287,7 +287,7 @@ importers:
         specifier: '>=18'
         version: 18.3.1(react@18.3.1)
     devDependencies:
-      '@bridge/tsconfig':
+      '@chetand/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
       '@testing-library/jest-dom':

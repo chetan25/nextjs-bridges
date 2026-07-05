@@ -1,10 +1,10 @@
 import type { Metadata } from 'next';
-import { BridgeSharedDepsProvider } from '@bridge/share';
+import { BridgeSharedDepsProvider } from '@chetand/share';
 import './globals.css';
 
 export const metadata: Metadata = {
   title: '@bridge demos',
-  description: 'Demo app for @bridge/lazy-handler, @bridge/hydration, and @bridge/share',
+  description: 'Demo app for @chetand/lazy-handler, @chetand/hydration, and @chetand/share',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

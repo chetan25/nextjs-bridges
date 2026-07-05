@@ -24,14 +24,14 @@ export function assertSharedDepsAvailable(shared: ShareManifest['shared']): void
     const live = window.__bridgeShared?.[dep] as { version?: unknown } | undefined;
     if (!live) {
       throw new Error(
-        `@bridge/share: shared dependency "${dep}" was expected at window.__bridgeShared.${dep} but is not available. ` +
+        `@chetand/share: shared dependency "${dep}" was expected at window.__bridgeShared.${dep} but is not available. ` +
           'Make sure <BridgeSharedDepsProvider> wraps this page before any remote component mounts.',
       );
     }
 
     if (typeof live.version !== 'string') {
       throw new Error(
-        `@bridge/share: shared dependency "${dep}" is available but has no version to verify compatibility.`,
+        `@chetand/share: shared dependency "${dep}" is available but has no version to verify compatibility.`,
       );
     }
 

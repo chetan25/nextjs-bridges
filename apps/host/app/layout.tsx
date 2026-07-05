@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: '@bridge/share host app',
-  description: 'Host app that exposes shared components via @bridge/share',
+  title: '@chetand/share host app',
+  description: 'Host app that exposes shared components via @chetand/share',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

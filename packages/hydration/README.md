@@ -1,13 +1,13 @@
-# @bridge/hydration
+# @chetand/hydration
 
 > Declarative hydration boundaries for Next.js 15 — defer Client Component hydration until a chosen strategy fires.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](../../LICENSE)
 
-Part of the [`bridges`](https://github.com/chetan25/nextjs-bridges) monorepo — see the [root README](https://github.com/chetan25/nextjs-bridges#readme) for how this fits alongside `@bridge/lazy-handler` and `@bridge/share`, and `apps/web`'s `/demo/ecommerce` page for all three working together.
+Part of the [`bridges`](https://github.com/chetan25/nextjs-bridges) monorepo — see the [root README](https://github.com/chetan25/nextjs-bridges#readme) for how this fits alongside `@chetand/lazy-handler` and `@chetand/share`, and `apps/web`'s `/demo/ecommerce` page for all three working together.
 
 ```bash
-pnpm add @bridge/hydration
+pnpm add @chetand/hydration
 ```
 
 ## The problem
@@ -25,7 +25,7 @@ This is purely a React-level deferral. The component JS is still bundled; hydrat
 ### `<HydrationBoundary>`
 
 ```tsx
-import { HydrationBoundary } from '@bridge/hydration';
+import { HydrationBoundary } from '@chetand/hydration';
 
 <HydrationBoundary
   strategy="visible"
@@ -62,7 +62,7 @@ import { HydrationBoundary } from '@bridge/hydration';
 Reads the nearest boundary's hydration state and imperative trigger. Must be called inside a `<HydrationBoundary>` — most useful inside a `fallback` slot to place a "Load now" button.
 
 ```tsx
-import { useHydrationState } from '@bridge/hydration';
+import { useHydrationState } from '@chetand/hydration';
 
 function ManualFallback() {
   const { hydrated, hydrateNow } = useHydrationState();
@@ -79,7 +79,7 @@ function ManualFallback() {
 HOC version. Wraps a component in a boundary without changing its usage.
 
 ```tsx
-import { withHydrationBoundary } from '@bridge/hydration';
+import { withHydrationBoundary } from '@chetand/hydration';
 
 const LazyChart = withHydrationBoundary(Chart, {
   strategy: 'visible',

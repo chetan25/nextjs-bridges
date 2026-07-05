@@ -1,8 +1,8 @@
 import type { NextConfig } from 'next';
-import { sharedDepsConfig } from '@bridge/share/next-config-helper';
+import { sharedDepsConfig } from '@chetand/share/next-config-helper';
 
 const nextConfig: NextConfig = {
-  transpilePackages: ['@bridge/lazy-handler', '@bridge/hydration'],
+  transpilePackages: ['@chetand/lazy-handler', '@chetand/hydration'],
 };
 
 export default sharedDepsConfig({

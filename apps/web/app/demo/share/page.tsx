@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import { RemoteComponent, bustManifestCache } from '@bridge/share';
+import { RemoteComponent, bustManifestCache } from '@chetand/share';
 
 const HOST_MANIFEST = 'http://localhost:3001/share-manifest.json';
 
@@ -47,7 +47,7 @@ export default function ShareDemoPage() {
 
   return (
     <main className="demo-page">
-      <h1>@bridge/share — edge case tests</h1>
+      <h1>@chetand/share — edge case tests</h1>
       <p className="subtitle">
         Components loaded at runtime from{' '}
         <code>http://localhost:3001</code> via manifest + dynamic import.

@@ -1,6 +1,6 @@
 import { createElement, useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { useLazyHandler } from '@bridge/lazy-handler/use-lazy-handler';
+import { useLazyHandler } from '@chetand/lazy-handler/use-lazy-handler';
 
 interface CartItem {
   id: string;
