@@ -39,6 +39,13 @@ export default function openCategoriesMenu(event: Event): void {
     menu.append(link);
   }
 
+  const tag = document.createElement('div');
+  tag.textContent = '[shell]';
+  tag.style.cssText =
+    'margin-top:0.4rem;padding-top:0.4rem;border-top:1px solid #e2e8f0;' +
+    "font-family:ui-monospace,monospace;font-size:0.7rem;color:#94a3b8;text-align:right;";
+  menu.append(tag);
+
   function close() {
     document.removeEventListener('keydown', onKeydown);
     document.removeEventListener('click', onOutsideClick);

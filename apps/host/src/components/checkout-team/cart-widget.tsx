@@ -95,6 +95,23 @@ function CartWidget() {
             boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
           },
         },
+        createElement(
+          'span',
+          {
+            style: {
+              display: 'inline-block',
+              fontFamily: 'ui-monospace, monospace',
+              fontSize: '0.7rem',
+              color: '#4338ca',
+              background: '#eef2ff',
+              border: '1px solid #c7d2fe',
+              borderRadius: 4,
+              padding: '0.1rem 0.4rem',
+              marginBottom: '0.5rem',
+            },
+          },
+          '[remote · host]',
+        ),
         items.length === 0
           ? createElement(
               'p',

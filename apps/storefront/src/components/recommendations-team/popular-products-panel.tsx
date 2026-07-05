@@ -34,8 +34,32 @@ function PopularProductsPanel({ products = DEFAULT_PRODUCTS }: Props) {
     createElement('h2', { style: { margin: 0, fontSize: '1.1rem' } }, '🔥 Popular Right Now'),
     createElement(
       'p',
-      { style: { margin: 0, fontSize: '0.8rem', color: '#64748b' } },
-      'Owned by the Recommendations team — loaded from apps/storefront',
+      {
+        style: {
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.5rem',
+          margin: 0,
+          fontSize: '0.8rem',
+          color: '#64748b',
+        },
+      },
+      createElement(
+        'span',
+        {
+          style: {
+            fontFamily: 'ui-monospace, monospace',
+            fontSize: '0.7rem',
+            color: '#4338ca',
+            background: '#eef2ff',
+            border: '1px solid #c7d2fe',
+            borderRadius: 4,
+            padding: '0.1rem 0.4rem',
+          },
+        },
+        '[remote · storefront]',
+      ),
+      'Owned by the Recommendations team',
     ),
     createElement(
       'div',

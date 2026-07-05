@@ -50,6 +50,13 @@ export default function openQuickView(event: Event): void {
   const image = document.createElement('div');
   image.style.cssText = `height:200px;border-radius:8px;background:${color ?? '#e0e7ff'};margin-bottom:1rem;`;
 
+  const tag = document.createElement('span');
+  tag.textContent = '[remote · storefront]';
+  tag.style.cssText =
+    'display:inline-block;font-family:ui-monospace,monospace;font-size:0.7rem;' +
+    'color:#4338ca;background:#eef2ff;border:1px solid #c7d2fe;border-radius:4px;' +
+    'padding:0.1rem 0.4rem;margin-bottom:0.5rem;';
+
   const heading = document.createElement('h3');
   heading.textContent = name;
   heading.style.cssText = 'margin:0 0 0.4rem;';
@@ -78,7 +85,7 @@ export default function openQuickView(event: Event): void {
     setTimeout(close, 600);
   });
 
-  panel.append(closeButton, image, heading, priceEl, description, addToCartButton);
+  panel.append(closeButton, tag, image, heading, priceEl, description, addToCartButton);
   backdrop.append(panel);
   document.body.append(backdrop);
 }
