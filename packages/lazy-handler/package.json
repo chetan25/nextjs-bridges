@@ -1,6 +1,6 @@
 {
   "name": "@chetand/lazy-handler",
-  "version": "0.1.0-alpha",
+  "version": "1.0.0",
   "description": "Defer React event handler JS until first user interaction — Qwik-style O(1) hydration cost",
   "license": "MIT",
   "repository": {
