@@ -2,7 +2,7 @@ import {
   ProductCard,
   createElement,
   createRoot
-} from "./chunk-L6S6U2P2.chunk.js";
+} from "./chunk-NDIGJQRL.chunk.js";
 
 // src/components/recommendations-team/popular-products-panel.tsx
 var DEFAULT_PRODUCTS = [
@@ -27,8 +27,32 @@ function PopularProductsPanel({ products = DEFAULT_PRODUCTS }) {
     createElement("h2", { style: { margin: 0, fontSize: "1.1rem" } }, "\u{1F525} Popular Right Now"),
     createElement(
       "p",
-      { style: { margin: 0, fontSize: "0.8rem", color: "#64748b" } },
-      "Owned by the Recommendations team \u2014 loaded from apps/storefront"
+      {
+        style: {
+          display: "flex",
+          alignItems: "center",
+          gap: "0.5rem",
+          margin: 0,
+          fontSize: "0.8rem",
+          color: "#64748b"
+        }
+      },
+      createElement(
+        "span",
+        {
+          style: {
+            fontFamily: "ui-monospace, monospace",
+            fontSize: "0.7rem",
+            color: "#4338ca",
+            background: "#eef2ff",
+            border: "1px solid #c7d2fe",
+            borderRadius: 4,
+            padding: "0.1rem 0.4rem"
+          }
+        },
+        "[remote \xB7 storefront]"
+      ),
+      "Owned by the Recommendations team"
     ),
     createElement(
       "div",

@@ -5,11 +5,17 @@ import {
   useEffect,
   useRef,
   useState
-} from "./chunk-NXXJ244C.chunk.js";
+} from "./chunk-3ZDPZGXF.chunk.js";
 
-// ../../packages/lazy-handler/dist/chunk-MLOX4YZF.mjs
+// ../../packages/lazy-handler/dist/chunk-KZ3MSAEG.mjs
+var DOM_PRELOAD_EVENTS = {
+  hover: "mouseenter",
+  focus: "focusin"
+};
 function useLazyHandler(loader, options = {}) {
   const { event = "click", capture = false, preloadOn = "none" } = options;
+  const strategies = Array.isArray(preloadOn) ? preloadOn : [preloadOn];
+  const strategiesKey = strategies.join(",");
   const [node, setNode] = useState(null);
   const ref = useCallback((el) => setNode(el), []);
   const handlerRef = useRef(null);
@@ -60,8 +66,11 @@ function useLazyHandler(loader, options = {}) {
       }
     };
     el.addEventListener(event, stub, { capture });
-    if (preloadOn === "visible") {
-      if (typeof IntersectionObserver !== "undefined") {
+    const teardowns = [];
+    for (const strategy of strategies) {
+      if (strategy === "none") continue;
+      if (strategy === "visible") {
+        if (typeof IntersectionObserver === "undefined") continue;
         const obs = new IntersectionObserver(
           ([entry]) => {
             if (entry.isIntersecting) {
@@ -72,30 +81,30 @@ function useLazyHandler(loader, options = {}) {
           { threshold: 0.1 }
         );
         obs.observe(el);
-        return () => {
-          cancelledRef.current = true;
-          el.removeEventListener(event, stub, { capture });
-          obs.disconnect();
-        };
+        teardowns.push(() => obs.disconnect());
+        continue;
       }
-    } else if (preloadOn !== "none") {
-      const DOM_PRELOAD_EVENTS = {
-        hover: "mouseenter",
-        focus: "focusin"
-      };
-      const preloadEvent = DOM_PRELOAD_EVENTS[preloadOn] ?? preloadOn;
+      if (strategy === "idle") {
+        let id;
+        if ("requestIdleCallback" in window) {
+          id = requestIdleCallback(doPreload);
+          teardowns.push(() => cancelIdleCallback(id));
+        } else {
+          id = setTimeout(doPreload, 0);
+          teardowns.push(() => clearTimeout(id));
+        }
+        continue;
+      }
+      const preloadEvent = DOM_PRELOAD_EVENTS[strategy] ?? strategy;
       el.addEventListener(preloadEvent, doPreload, { once: true });
-      return () => {
-        cancelledRef.current = true;
-        el.removeEventListener(event, stub, { capture });
-        el.removeEventListener(preloadEvent, doPreload);
-      };
+      teardowns.push(() => el.removeEventListener(preloadEvent, doPreload));
     }
     return () => {
       cancelledRef.current = true;
       el.removeEventListener(event, stub, { capture });
+      teardowns.forEach((fn) => fn());
     };
-  }, [node, event, capture, preloadOn, stub]);
+  }, [node, event, capture, strategiesKey, stub]);
   return [ref, stub];
 }
 
@@ -165,6 +174,23 @@ function CartWidget() {
           boxShadow: "0 4px 12px rgba(0,0,0,0.08)"
         }
       },
+      createElement(
+        "span",
+        {
+          style: {
+            display: "inline-block",
+            fontFamily: "ui-monospace, monospace",
+            fontSize: "0.7rem",
+            color: "#4338ca",
+            background: "#eef2ff",
+            border: "1px solid #c7d2fe",
+            borderRadius: 4,
+            padding: "0.1rem 0.4rem",
+            marginBottom: "0.5rem"
+          }
+        },
+        "[remote \xB7 host]"
+      ),
       items.length === 0 ? createElement(
         "p",
         { style: { margin: 0, color: "#64748b", fontSize: "0.85rem" } },

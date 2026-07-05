@@ -6,6 +6,10 @@ node_modules/
 dist/
 .next/
 out/
+# apps/host and apps/storefront's public/ is entirely generated: share-manifest.json
+# (written by shareConfig() on next.config.ts evaluation) and *.chunk.js (tsup
+# build:chunks). Run `pnpm --filter <app> build:chunks` after cloning.
+apps/*/public/
 
 # Turbo
 .turbo/
@@ -21,3 +25,6 @@ out/
 
 # SDD scratch (not needed in git history)
 .superpowers/
+
+# Planning/spec docs — working notes, not shipped documentation
+docs/

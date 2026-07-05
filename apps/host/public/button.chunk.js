@@ -1,7 +1,7 @@
 import {
   createElement,
   createRoot
-} from "./chunk-NXXJ244C.chunk.js";
+} from "./chunk-3ZDPZGXF.chunk.js";
 
 // src/components/button.tsx
 function SharedButton({ label = "Remote Button", color = "#6366f1" }) {
