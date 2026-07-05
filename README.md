@@ -460,7 +460,7 @@ Each of the three packages (`packages/lazy-handler`, `packages/hydration`, `pack
 3. Publishes to npm, generates/updates that package's `CHANGELOG.md`, tags the release (e.g. `@chetand/share@1.2.0`), and opens a GitHub Release.
 4. A change to only one package does not version-bump the others.
 
-This requires an `NPM_TOKEN` repo secret (an npm automation token with publish access to the `@bridge` scope) — `GITHUB_TOKEN` is provided automatically by Actions. Until `NPM_TOKEN` is set and a `feat`/`fix` commit lands on `main`, the release job will run and fail at the npm-auth step by design; nothing publishes accidentally.
+This requires an `NPM_TOKEN` repo secret (an npm automation token with publish access to the `@chetand` scope) — `GITHUB_TOKEN` is provided automatically by Actions. Until `NPM_TOKEN` is set and a `feat`/`fix` commit lands on `main`, the release job will run and fail at the npm-auth step by design; nothing publishes accidentally.
 
 ---
 
