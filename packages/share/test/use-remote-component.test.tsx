@@ -10,8 +10,13 @@ vi.mock('../src/chunk-loader', () => ({
   loadChunk: vi.fn(),
 }));
 
+vi.mock('../src/chunk-watcher', () => ({
+  watchChunkForChanges: vi.fn(() => vi.fn()),
+}));
+
 import { loadManifest } from '../src/manifest-loader';
 import { loadChunk } from '../src/chunk-loader';
+import { watchChunkForChanges } from '../src/chunk-watcher';
 
 declare global {
   interface Window {
@@ -189,5 +194,79 @@ describe('useRemoteComponent', () => {
 
     rerender({ url: 'http://example.com/manifest-b.json' });
     await waitFor(() => expect(vi.mocked(loadManifest)).toHaveBeenCalledTimes(2));
+  });
+
+  describe('hotReload option', () => {
+    it('does not start watching when hotReload is not set', async () => {
+      vi.mocked(loadManifest).mockResolvedValue(mockManifest);
+      vi.mocked(loadChunk).mockResolvedValue({ default: mockMount });
+
+      const { result } = renderHook(() =>
+        useRemoteComponent('http://example.com/manifest.json', './Button'),
+      );
+
+      await waitFor(() => expect(result.current.mount).toBe(mockMount));
+      expect(watchChunkForChanges).not.toHaveBeenCalled();
+    });
+
+    it('starts watching the resolved chunk URL once the initial load succeeds, when hotReload is true', async () => {
+      vi.mocked(loadManifest).mockResolvedValue(mockManifest);
+      vi.mocked(loadChunk).mockResolvedValue({ default: mockMount });
+
+      const { result } = renderHook(() =>
+        useRemoteComponent('http://example.com/manifest.json', './Button', undefined, {
+          hotReload: true,
+          hotReloadInterval: 3000,
+        }),
+      );
+
+      await waitFor(() => expect(result.current.mount).toBe(mockMount));
+      expect(watchChunkForChanges).toHaveBeenCalledWith(
+        'http://localhost:3001/button.chunk.js',
+        expect.any(Function),
+        { interval: 3000 },
+      );
+    });
+
+    it('swaps mount to the newly loaded module when the watcher reports a change', async () => {
+      vi.mocked(loadManifest).mockResolvedValue(mockManifest);
+      vi.mocked(loadChunk).mockResolvedValue({ default: mockMount });
+
+      const { result } = renderHook(() =>
+        useRemoteComponent('http://example.com/manifest.json', './Button', undefined, {
+          hotReload: true,
+        }),
+      );
+
+      await waitFor(() => expect(result.current.mount).toBe(mockMount));
+
+      const onChange = vi.mocked(watchChunkForChanges).mock.calls[0][1];
+      const newMount = () => document.createElement('div');
+      act(() => {
+        onChange({ default: newMount });
+      });
+
+      expect(result.current.mount).toBe(newMount);
+      expect(result.current.loading).toBe(false);
+      expect(result.current.error).toBeNull();
+    });
+
+    it('stops watching on unmount', async () => {
+      const stopWatching = vi.fn();
+      vi.mocked(watchChunkForChanges).mockReturnValue(stopWatching);
+      vi.mocked(loadManifest).mockResolvedValue(mockManifest);
+      vi.mocked(loadChunk).mockResolvedValue({ default: mockMount });
+
+      const { result, unmount } = renderHook(() =>
+        useRemoteComponent('http://example.com/manifest.json', './Button', undefined, {
+          hotReload: true,
+        }),
+      );
+
+      await waitFor(() => expect(result.current.mount).toBe(mockMount));
+
+      unmount();
+      expect(stopWatching).toHaveBeenCalledOnce();
+    });
   });
 });

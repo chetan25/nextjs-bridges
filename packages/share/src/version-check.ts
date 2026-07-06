@@ -14,6 +14,20 @@ export function parseSemVer(raw: string): SemVer {
 }
 
 /**
+ * Same major, and `provided` >= `required` down to patch — the caret-range
+ * compatibility rule. Shared by checkVersion's `^` constraint and
+ * shared-dep-resolver.ts/shared-dep-guard.ts, which both need the identical
+ * "is this actual version at least as new as what was assumed" check.
+ */
+export function satisfiesCaretRange(provided: SemVer, required: SemVer): boolean {
+  return (
+    provided.major === required.major &&
+    (provided.minor > required.minor ||
+      (provided.minor === required.minor && provided.patch >= required.patch))
+  );
+}
+
+/**
  * Throws if `provided` does not satisfy `required`.
  * Supports exact, ^major, and ~major.minor constraints.
  */
@@ -28,9 +42,7 @@ export function checkVersion(provided: string, required: string): void {
   let ok: boolean;
   if (caret) {
     // ^1.2.3 → >=1.2.3 <2.0.0
-    ok =
-      p.major === r.major &&
-      (p.minor > r.minor || (p.minor === r.minor && p.patch >= r.patch));
+    ok = satisfiesCaretRange(p, r);
   } else if (tilde) {
     // ~1.2.3 → >=1.2.3 <1.3.0
     ok = p.major === r.major && p.minor === r.minor && p.patch >= r.patch;

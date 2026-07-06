@@ -11,8 +11,13 @@ vi.mock('../src/chunk-loader', () => ({
   loadChunk: vi.fn(),
 }));
 
+vi.mock('../src/chunk-watcher', () => ({
+  watchChunkForChanges: vi.fn(() => vi.fn()),
+}));
+
 import { loadManifest } from '../src/manifest-loader';
 import { loadChunk } from '../src/chunk-loader';
+import { watchChunkForChanges } from '../src/chunk-watcher';
 
 const mockManifest = {
   name: 'host-app',
@@ -156,5 +161,27 @@ describe('<RemoteComponent>', () => {
     );
 
     consoleSpy.mockRestore();
+  });
+
+  it('passes hotReload and hotReloadInterval through to the hook', async () => {
+    vi.mocked(loadManifest).mockResolvedValue(mockManifest);
+    vi.mocked(loadChunk).mockResolvedValue({ default: mockMount });
+
+    render(
+      <RemoteComponent
+        manifestUrl="http://example.com/manifest.json"
+        expose="./Button"
+        hotReload
+        hotReloadInterval={3000}
+      />,
+    );
+
+    await waitFor(() =>
+      expect(watchChunkForChanges).toHaveBeenCalledWith(
+        'http://localhost:3001/button.chunk.js',
+        expect.any(Function),
+        { interval: 3000 },
+      ),
+    );
   });
 });

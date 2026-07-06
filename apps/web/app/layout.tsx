@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { BridgeSharedDepsProvider } from '@chetand/share';
+import { AppSharedDepsProvider } from './shared-deps-provider';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -11,7 +11,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body>
-        <BridgeSharedDepsProvider>{children}</BridgeSharedDepsProvider>
+        <AppSharedDepsProvider>{children}</AppSharedDepsProvider>
       </body>
     </html>
   );

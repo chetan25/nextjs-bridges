@@ -82,6 +82,42 @@ describe('<BridgeSharedDepsProvider>', () => {
     }
   });
 
+  it('merges shared prop entries into window.__bridgeShared alongside react/react-dom', () => {
+    const dateFns = { format: () => 'formatted' };
+
+    render(
+      <BridgeSharedDepsProvider shared={{ 'date-fns': { module: dateFns, version: '2.30.0' } }}>
+        <span>child</span>
+      </BridgeSharedDepsProvider>,
+    );
+
+    const published = window.__bridgeShared?.['date-fns'] as { format: () => string; version: string };
+    expect(published.format).toBe(dateFns.format);
+    expect(published.version).toBe('2.30.0');
+
+    // react/react-dom still publish as usual
+    expect((window.__bridgeShared?.react as typeof React).createElement).toBe(React.createElement);
+  });
+
+  it('publishes multiple shared entries independently', () => {
+    const libA = { foo: () => {} };
+    const libB = { bar: () => {} };
+
+    render(
+      <BridgeSharedDepsProvider
+        shared={{
+          'lib-a': { module: libA, version: '1.0.0' },
+          'lib-b': { module: libB, version: '2.0.0' },
+        }}
+      >
+        <span>child</span>
+      </BridgeSharedDepsProvider>,
+    );
+
+    expect((window.__bridgeShared?.['lib-a'] as { version: string }).version).toBe('1.0.0');
+    expect((window.__bridgeShared?.['lib-b'] as { version: string }).version).toBe('2.0.0');
+  });
+
   it('does not throw when window is undefined (SSR)', () => {
     const originalWindow = globalThis.window;
     // @ts-expect-error - simulate an SSR environment where `window` does not exist

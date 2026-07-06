@@ -25,4 +25,11 @@ export default defineConfig([
     sourcemap: true,
     platform: 'node',
   },
+  {
+    entry: ['src/shared-dep-shim-generator.ts'],
+    format: ['esm', 'cjs'],
+    dts: true,
+    sourcemap: true,
+    platform: 'node',
+  },
 ]);

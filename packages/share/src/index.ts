@@ -3,6 +3,10 @@ export type { ShareManifest, ShareManifestEntry, RemoteComponentState, MountFunc
 export { loadManifest, bustManifestCache } from './manifest-loader';
 export { checkVersion } from './version-check';
 export { useRemoteComponent } from './use-remote-component';
+export type { UseRemoteComponentOptions } from './use-remote-component';
 export { RemoteComponent } from './remote-component';
 export { RemoteErrorBoundary } from './remote-error-boundary';
 export { BridgeSharedDepsProvider } from './bridge-shared-deps-provider';
+export type { BridgeSharedDepsProviderProps } from './bridge-shared-deps-provider';
+export { watchChunkForChanges } from './chunk-watcher';
+export type { ChunkModule } from './chunk-loader';

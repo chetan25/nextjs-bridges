@@ -29,19 +29,27 @@ describe('assertSharedDepsAvailable', () => {
     ).not.toThrow();
   });
 
-  it('treats entry.version without a leading caret as an exact requirement', () => {
-    // entry.version is passed through to checkVersion as-is (no caret is
-    // prepended), so a bare version string like "18.3.0" now means "must
-    // match exactly", not "must satisfy ^18.3.0".
-    window.__bridgeShared = { react: { version: '18.3.1' } };
+  it('always applies caret-range semantics to entry.version, regardless of its own prefix', () => {
+    // entry.version reflects the host's own declared version, which may or
+    // may not carry a leading caret depending on how the host's package.json
+    // happened to pin it — that incidental detail must not change strictness.
+    // A live version with a higher (safe, semver-compatible) patch always passes.
+    window.__bridgeShared = { react: { version: '18.3.5' } };
     expect(() =>
       assertSharedDepsAvailable({ react: { version: '18.3.0', external: true } }),
-    ).toThrow('Version mismatch');
+    ).not.toThrow();
 
     window.__bridgeShared = { react: { version: '18.3.0' } };
     expect(() =>
       assertSharedDepsAvailable({ react: { version: '18.3.0', external: true } }),
     ).not.toThrow();
+  });
+
+  it('throws when the live version has a lower patch than entry.version requires', () => {
+    window.__bridgeShared = { react: { version: '18.3.0' } };
+    expect(() =>
+      assertSharedDepsAvailable({ react: { version: '18.3.5', external: true } }),
+    ).toThrow('Version mismatch');
   });
 
   it('throws when the global is missing entirely', () => {

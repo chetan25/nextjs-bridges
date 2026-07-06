@@ -1,5 +1,6 @@
 import { createElement } from 'react';
 import { createRoot } from 'react-dom/client';
+import { format } from 'date-fns';
 
 interface Props {
   label?: string;
@@ -30,7 +31,7 @@ function SharedButton({ label = 'Remote Button', color = '#6366f1' }: Props) {
           fontWeight: 600,
         },
       },
-      '✓ Loaded from host-app — dynamically imported chunk',
+      `✓ Loaded from host-app — dynamically imported chunk (rendered ${format(new Date(), 'PPpp')})`,
     ),
     createElement(
       'button',

@@ -27,6 +27,11 @@
       "types": "./dist/shared-dep-resolver.d.ts",
       "import": "./dist/shared-dep-resolver.mjs",
       "require": "./dist/shared-dep-resolver.js"
+    },
+    "./shared-dep-shim-generator": {
+      "types": "./dist/shared-dep-shim-generator.d.ts",
+      "import": "./dist/shared-dep-shim-generator.mjs",
+      "require": "./dist/shared-dep-shim-generator.js"
     }
   },
   "main": "./dist/index.js",

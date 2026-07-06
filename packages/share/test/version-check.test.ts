@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { checkVersion } from '../src/version-check';
+import { checkVersion, satisfiesCaretRange, parseSemVer } from '../src/version-check';
 
 describe('checkVersion', () => {
   describe('exact match', () => {
@@ -68,5 +68,31 @@ describe('checkVersion', () => {
     it('parses build metadata (+) correctly', () => {
       expect(() => checkVersion('1.0.0+build.42', '1.0.0')).not.toThrow();
     });
+  });
+});
+
+describe('satisfiesCaretRange', () => {
+  it('is true when major, minor, and patch all match', () => {
+    expect(satisfiesCaretRange(parseSemVer('1.2.3'), parseSemVer('1.2.3'))).toBe(true);
+  });
+
+  it('is true when provided minor is greater, same major', () => {
+    expect(satisfiesCaretRange(parseSemVer('1.3.0'), parseSemVer('1.2.0'))).toBe(true);
+  });
+
+  it('is true when provided patch is greater, same major.minor', () => {
+    expect(satisfiesCaretRange(parseSemVer('1.2.5'), parseSemVer('1.2.3'))).toBe(true);
+  });
+
+  it('is false when provided patch is lower, same major.minor', () => {
+    expect(satisfiesCaretRange(parseSemVer('1.2.2'), parseSemVer('1.2.3'))).toBe(false);
+  });
+
+  it('is false when provided minor is lower, same major', () => {
+    expect(satisfiesCaretRange(parseSemVer('1.1.0'), parseSemVer('1.2.0'))).toBe(false);
+  });
+
+  it('is false when major differs, even if provided is numerically greater', () => {
+    expect(satisfiesCaretRange(parseSemVer('2.0.0'), parseSemVer('1.9.9'))).toBe(false);
   });
 });

@@ -12,6 +12,10 @@ interface RemoteComponentProps {
   fallback?: ReactNode;
   errorFallback?: ErrorFallbackProp;
   props?: Record<string, unknown>;
+  /** Poll the resolved chunk URL and swap in a rebuilt version without a page reload. Dev-only — opt in explicitly. */
+  hotReload?: boolean;
+  /** Poll interval in ms. Defaults to 2000. Only used when hotReload is true. */
+  hotReloadInterval?: number;
 }
 
 function DefaultErrorFallback() {
@@ -28,12 +32,15 @@ function RemoteInner({
   requiredVersion,
   fallback = null,
   props = {},
+  hotReload = false,
+  hotReloadInterval,
 }: Omit<RemoteComponentProps, 'errorFallback'>) {
   const containerRef = useRef<HTMLDivElement>(null);
   const { mount, loading, error } = useRemoteComponent(
     manifestUrl,
     expose,
     requiredVersion,
+    { hotReload, ...(hotReloadInterval !== undefined ? { hotReloadInterval } : {}) },
   );
 
   useEffect(() => {

@@ -1,14 +1,37 @@
 import { defineConfig } from 'tsup';
 import { resolve } from 'path';
+import { createRequire } from 'module';
 import { loadSharedDepDecisions, loadOwnVersions } from '@chetand/share/shared-dep-resolver';
+import { generateSharedDepShim } from '@chetand/share/shared-dep-shim-generator';
 
-const SHARED = { react: {}, 'react-dom': {} };
+// tsup bundles this config file itself as ESM without a require() shim, so a
+// bare `require(dep)` fails at config-load time even though it works fine
+// inside the actual chunk entries (which set platform: 'node'/'browser'
+// explicitly). createRequire gives this file its own working require().
+const require = createRequire(import.meta.url);
+
+const SHARED = { react: {}, 'react-dom': {}, 'date-fns': {} };
 const ownVersions = loadOwnVersions(SHARED, resolve(process.cwd(), 'package.json'));
 const decisions = loadSharedDepDecisions(
   SHARED,
   ownVersions,
   resolve(process.cwd(), '../../packages/share/shared-contract.json'),
 );
+
+// Any shared dep other than react/react-dom (which use hand-written shims for
+// full named-export support) gets a shim generated on the fly, by introspecting
+// the real, installed library's own exports — see shared-dep-shim-generator.ts.
+const GENERIC_SHARED_DEPS = Object.keys(SHARED).filter(
+  (dep) => dep !== 'react' && dep !== 'react-dom',
+);
+const genericShimAliases: Record<string, string> = {};
+for (const dep of GENERIC_SHARED_DEPS) {
+  if (!decisions[dep]?.external) continue;
+  const shimPath = resolve(process.cwd(), '.bridge-shims', `${dep}-shim.ts`);
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  generateSharedDepShim(dep, require(dep), shimPath);
+  genericShimAliases[dep] = shimPath;
+}
 
 export default defineConfig({
   entry: {
@@ -27,11 +50,12 @@ export default defineConfig({
   sourcemap: false,
   dts: false,
   clean: false,
-  // Bundle React into the chunk by default (tsup would otherwise treat any
-  // package.json dependency as external) — unchanged from before this plan.
+  // Bundle React (and any other shared dep) into the chunk by default (tsup
+  // would otherwise treat any package.json dependency as external) — unchanged
+  // from before this plan, extended to cover every generic shared dep too.
   // Which *implementation* gets bundled (the real package, or a shim reading
   // window.__bridgeShared) is controlled entirely by esbuildOptions.alias below.
-  noExternal: [/react/, '@chetand/lazy-handler'],
+  noExternal: [/react/, '@chetand/lazy-handler', ...GENERIC_SHARED_DEPS],
   esbuildOptions(options) {
     options.alias = {
       ...options.alias,
@@ -47,6 +71,7 @@ export default defineConfig({
             ),
           }
         : {}),
+      ...genericShimAliases,
     };
   },
 });

@@ -11,6 +11,10 @@ out/
 # build:chunks). Run `pnpm --filter <app> build:chunks` after cloning.
 apps/*/public/
 
+# Generated shared-dep shims (generateSharedDepShim, called from tsup.config.ts
+# for any shared dep other than react/react-dom) — regenerated on every build:chunks.
+.bridge-shims/
+
 # Turbo
 .turbo/
 

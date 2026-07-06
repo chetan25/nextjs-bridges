@@ -1,5 +1,5 @@
 import { readFileSync } from 'fs';
-import { parseSemVer } from './version-check';
+import { parseSemVer, satisfiesCaretRange } from './version-check';
 
 export interface SharedDepDecision {
   external: boolean;
@@ -10,9 +10,10 @@ export interface SharedDepDecision {
 /**
  * Decides, per shared dependency, whether apps/host's own version is
  * compatible enough with what apps/web guarantees to skip bundling it.
- * Compatible means: same major, and own minor <= contract minor — apps/web's
- * copy is what actually runs, so it must be at least as new as what the
- * exposed component was built against.
+ * Compatible means: same major, and the contract version satisfies own
+ * version down to patch (satisfiesCaretRange) — apps/web's copy is what
+ * actually runs, so it must be at least as new as what the exposed
+ * component was built against.
  */
 export function resolveSharedDeps(
   shared: Record<string, { singleton?: boolean }>,
@@ -36,7 +37,7 @@ export function resolveSharedDeps(
 
     const own = parseSemVer(ownRaw);
     const provided = parseSemVer(contractRaw);
-    const external = own.major === provided.major && own.minor <= provided.minor;
+    const external = satisfiesCaretRange(provided, own);
 
     result[dep] = { external, ownVersion: ownRaw, contractVersion: contractRaw };
   }

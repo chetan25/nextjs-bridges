@@ -1,4 +1,4 @@
-import { checkVersion } from './version-check';
+import { parseSemVer, satisfiesCaretRange } from './version-check';
 import type { ShareManifest } from './types';
 
 declare global {
@@ -35,6 +35,15 @@ export function assertSharedDepsAvailable(shared: ShareManifest['shared']): void
       );
     }
 
-    checkVersion(live.version, entry.version);
+    // Always caret-range semantics — entry.version's own prefix (or lack of
+    // one) is incidental to how the host's package.json happened to pin it,
+    // not a deliberate strictness choice, so it must not affect this check.
+    const required = parseSemVer(entry.version);
+    const provided = parseSemVer(live.version);
+    if (!satisfiesCaretRange(provided, required)) {
+      throw new Error(
+        `Version mismatch: remote provides "${live.version}" but consumer requires "^${entry.version}"`,
+      );
+    }
   }
 }

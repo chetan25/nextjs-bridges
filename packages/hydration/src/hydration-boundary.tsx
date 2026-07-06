@@ -1,20 +1,41 @@
 'use client';
-import { useState, useRef, useEffect, useCallback, Suspense } from 'react';
+import {
+  useState,
+  useRef,
+  useEffect,
+  useCallback,
+  Suspense,
+  lazy,
+  createElement,
+  type LazyExoticComponent,
+  type ComponentType,
+} from 'react';
 import { HydrationContext } from './hydration-context';
 import type { HydrationBoundaryProps } from './types';
 
-export function HydrationBoundary({
+export function HydrationBoundary<P extends object = object>({
   strategy = 'visible',
   children,
+  loader,
+  componentProps,
   fallback = null,
   threshold = 0.1,
   rootMargin = '200px',
   onHydrate,
-}: HydrationBoundaryProps) {
+}: HydrationBoundaryProps<P>) {
   const [hydrated, setHydrated] = useState(strategy === 'eager');
   const ref = useRef<HTMLDivElement>(null);
   const onHydrateRef = useRef(onHydrate);
   onHydrateRef.current = onHydrate;
+
+  // loaderRef holds the latest loader identity so a fresh inline arrow function
+  // passed on every render doesn't recreate (and thus re-invoke) the lazy wrapper.
+  const loaderRef = useRef(loader);
+  loaderRef.current = loader;
+  const lazyComponentRef = useRef<LazyExoticComponent<ComponentType<P>> | null>(null);
+  if (loader && !lazyComponentRef.current) {
+    lazyComponentRef.current = lazy(() => loaderRef.current!());
+  }
 
   const hydrateNow = useCallback(() => {
     setHydrated(true);
@@ -72,10 +93,21 @@ export function HydrationBoundary({
     // 'manual' — hydration triggered by hydrateNow() via context
   }, [strategy, hydrated, threshold, rootMargin]);
 
+  const LazyComponent = lazyComponentRef.current;
+  // TS can't prove a bare generic P satisfies its own props-attribute constraints;
+  // the public API (HydrationBoundaryProps<P>) already guarantees componentProps: P
+  // matches loader's ComponentType<P>, so this cast is safe by construction.
+  const content = LazyComponent
+    ? createElement(
+        LazyComponent as unknown as ComponentType<Record<string, unknown>>,
+        componentProps as Record<string, unknown>,
+      )
+    : children;
+
   return (
     <HydrationContext.Provider value={{ hydrated, hydrateNow }}>
       <div ref={ref}>
-        {hydrated ? <Suspense fallback={fallback}>{children}</Suspense> : <>{fallback}</>}
+        {hydrated ? <Suspense fallback={fallback}>{content}</Suspense> : <>{fallback}</>}
       </div>
     </HydrationContext.Provider>
   );

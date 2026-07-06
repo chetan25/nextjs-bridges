@@ -29,6 +29,16 @@ describe('resolveSharedDeps', () => {
     expect(result.react.external).toBe(false);
   });
 
+  it('externalizes when own patch is lower than the contract, same major.minor', () => {
+    const result = resolveSharedDeps({ react: {} }, { react: '18.3.1' }, { react: '18.3.5' });
+    expect(result.react.external).toBe(true);
+  });
+
+  it('does not externalize when own patch is higher than the contract, same major.minor', () => {
+    const result = resolveSharedDeps({ react: {} }, { react: '18.3.5' }, { react: '18.3.1' });
+    expect(result.react.external).toBe(false);
+  });
+
   it('strips ^ and ~ prefixes from both own and contract versions', () => {
     const result = resolveSharedDeps({ react: {} }, { react: '^18.2.0' }, { react: '~18.3.0' });
     expect(result.react.external).toBe(true);

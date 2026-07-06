@@ -6,6 +6,6 @@ const nextConfig: NextConfig = {
 };
 
 export default sharedDepsConfig({
-  provides: ['react', 'react-dom'],
+  provides: ['react', 'react-dom', 'date-fns'],
   outputPath: '../../packages/share/shared-contract.json',
 })(nextConfig);

@@ -177,7 +177,7 @@ function Button({ isLoading, onClick }: ButtonProps) {
 
 `<HydrationBoundary>` wraps any subtree and gates rendering behind a boolean `hydrated` state. Until that state flips, the boundary renders the `fallback` prop (skeleton, spinner, or nothing). Hydration is triggered by a chosen **strategy** — viewport visibility, browser idle time, first pointer contact, or a manual imperative call.
 
-This is purely a React-level deferral. The component JS is still bundled; hydration just determines when React mounts and makes the subtree interactive.
+By default this is a purely React-level deferral: pass `children` and the component JS is still bundled eagerly; hydration just determines when React mounts and makes the subtree interactive. Pass `loader` instead of `children` to also defer the **bundle** itself — see below.
 
 ### API
 
@@ -198,13 +198,33 @@ import { HydrationBoundary } from '@chetand/hydration';
 
 **Props**
 
-| Prop         | Type                | Default     | Description                                               |
-| ------------ | ------------------- | ----------- | --------------------------------------------------------- |
-| `strategy`   | `HydrationStrategy` | `'visible'` | When to hydrate (see table below)                         |
-| `fallback`   | `ReactNode`         | `null`      | Rendered while dehydrated                                 |
-| `threshold`  | `number             | number[]`   | `0.1`                                                     | IntersectionObserver threshold — `visible` strategy only |
-| `rootMargin` | `string`            | `'200px'`   | IntersectionObserver rootMargin — `visible` strategy only |
-| `onHydrate`  | `() => void`        | —           | Fired once when hydration occurs                          |
+| Prop            | Type                | Default     | Description                                               |
+| --------------- | ------------------- | ----------- | --------------------------------------------------------- |
+| `strategy`      | `HydrationStrategy` | `'visible'` | When to hydrate (see table below)                         |
+| `fallback`      | `ReactNode`         | `null`      | Rendered while dehydrated, and reused as the `Suspense` fallback while `loader` is in flight |
+| `threshold`     | `number             | number[]`   | `0.1`                                                     | IntersectionObserver threshold — `visible` strategy only |
+| `rootMargin`    | `string`            | `'200px'`   | IntersectionObserver rootMargin — `visible` strategy only |
+| `onHydrate`     | `() => void`        | —           | Fired once when hydration occurs                          |
+| `children`      | `ReactNode`         | —           | Eagerly-bundled content. Mutually exclusive with `loader`. |
+| `loader`        | `() => Promise<{ default: ComponentType<P> }>` | — | Code-split content, dynamically imported once hydrated. Mutually exclusive with `children`. |
+| `componentProps`| `P`                 | —           | Props passed to the component resolved by `loader`.       |
+
+#### Code-splitting with `loader`
+
+Passing `children` means whatever component you wrap is already statically imported by your file — hydration deferral changes *when* it mounts, not whether its JS ships on page load. Pass `loader` instead to defer the `import()` itself until the strategy fires:
+
+```tsx
+<HydrationBoundary
+  strategy="visible"
+  fallback={<Skeleton />}
+  loader={() => import('./HeavyWidget')}
+  componentProps={{ title: 'Recommended for you' }}
+/>
+```
+
+Internally this wraps `loader` in `React.lazy()` and renders it inside the same `Suspense`/`fallback` the boundary already uses — so if the chunk is still downloading by the time `hydrated` flips true, the same skeleton just stays up a little longer. `children` and `loader` are mutually exclusive (enforced at the type level — passing both, or neither, is a compile error). A rejected `loader` promise throws during render, same as any `React.lazy` component — wrap `<HydrationBoundary>` in your own `ErrorBoundary` if you want to handle load failures.
+
+`withHydrationBoundary` (the HOC below) only supports the `children` pattern — it takes an already-imported `Component` reference, so there's nothing to code-split.
 
 **Strategies**
 
@@ -287,7 +307,7 @@ Boundaries nest independently. Each has its own trigger and state.
 2. The hook fetches the manifest (cached for 5 minutes, with retry), resolves the chunk URL, dynamically loads the script, and calls `mount()`.
 3. React renders the remote component inside the local tree with no shared runtime conflicts.
 
-**React/React-DOM are shared as a runtime singleton when versions are compatible — not bundled per chunk.** The consumer app mounts `<BridgeSharedDepsProvider>` above any `<RemoteComponent>` usage, which publishes its own `React`/`ReactDOM` instances onto `window.__bridgeShared`. Separately, the consumer's `next.config.ts` calls `sharedDepsConfig({ provides: ['react', 'react-dom'], outputPath })`, writing a small contract file with its declared versions. Each exposing app's build (`tsup.config.ts` + `shared-dep-resolver`) reads that contract and compares it against its own React version: if compatible (same major, its minor ≤ the consumer's), esbuild aliases `react`/`react-dom` to thin shims that read off `window.__bridgeShared` instead of bundling the real package, so the chunk ships no React of its own. If incompatible, the chunk falls back to bundling its own React — so the host and consumer *can* still run different minor versions, they just don't share a runtime unless they're close enough for it to be safe. `assertSharedDepsAvailable` throws at mount time if a chunk claims `external: true` but the singleton isn't actually present. See `apps/Readme.md` for a concrete walkthrough against the `/demo/ecommerce` example.
+**React/React-DOM are shared as a runtime singleton when versions are compatible — not bundled per chunk.** The consumer app mounts `<BridgeSharedDepsProvider>` above any `<RemoteComponent>` usage, which publishes its own `React`/`ReactDOM` instances onto `window.__bridgeShared`. Separately, the consumer's `next.config.ts` calls `sharedDepsConfig({ provides: ['react', 'react-dom'], outputPath })`, writing a small contract file with its declared versions. Each exposing app's build (`tsup.config.ts` + `shared-dep-resolver`) reads that contract and compares it against its own React version: if compatible (same major, and the contract version is at least as new as the exposing app's own version, down to patch — see `satisfiesCaretRange` in `version-check.ts`), esbuild aliases `react`/`react-dom` to thin shims that read off `window.__bridgeShared` instead of bundling the real package, so the chunk ships no React of its own. If incompatible, the chunk falls back to bundling its own React — so the host and consumer *can* still run different versions, they just don't share a runtime unless they're close enough for it to be safe. At mount time, `assertSharedDepsAvailable` re-verifies the same caret-range rule against the *live* consumer version (which may have drifted since the contract was generated) and throws if a chunk claims `external: true` but the singleton isn't actually present or compatible. See `apps/Readme.md` for a concrete walkthrough against the `/demo/ecommerce` example.
 
 ### Setup — Host App
 
@@ -343,6 +363,50 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 }
 ```
 
+#### Sharing a third library beyond React/React-DOM
+
+`BridgeSharedDepsProvider` accepts an optional `shared` prop for any additional library — the provider can't import an arbitrary library itself (every library has a different shape), so the consumer imports it normally and hands over the module plus its version:
+
+```tsx
+// apps/web/app/shared-deps-provider.tsx
+'use client';
+import { BridgeSharedDepsProvider } from '@chetand/share';
+import * as DateFns from 'date-fns';
+
+// A dedicated 'use client' module, not layout.tsx directly: importing date-fns
+// here keeps its functions from ever crossing the Server → Client Component
+// prop boundary, which can't serialize functions. This is exactly why
+// BridgeSharedDepsProvider imports React/ReactDOM internally instead of
+// receiving them as props.
+export function AppSharedDepsProvider({ children }: { children: React.ReactNode }) {
+  return (
+    <BridgeSharedDepsProvider
+      shared={{ 'date-fns': { module: DateFns, version: '3.6.0' } }}
+    >
+      {children}
+    </BridgeSharedDepsProvider>
+  );
+}
+```
+
+On the exposing app's side, `generateSharedDepShim` (from `@chetand/share/shared-dep-shim-generator`, a Node-only entry point) introspects the real, installed library's own exports at build time and writes a matching shim — the same pattern the hand-written `react-shim.ts`/`react-dom-shim.ts` use, just generated instead of hand-typed, so it works for any library's export shape:
+
+```ts
+// apps/host/tsup.config.ts
+import { generateSharedDepShim } from '@chetand/share/shared-dep-shim-generator';
+import { createRequire } from 'module';
+
+const require = createRequire(import.meta.url); // tsup bundles its own config as ESM with no require() shim
+
+if (decisions['date-fns']?.external) {
+  const shimPath = resolve('.bridge-shims/date-fns-shim.ts');
+  generateSharedDepShim('date-fns', require('date-fns'), shimPath);
+  // then alias 'date-fns' → shimPath in esbuildOptions, same as react/react-dom below
+}
+```
+
+See `apps/host/tsup.config.ts` for the full working example (shared with `apps/web` in the `/demo/share` page). `.bridge-shims/` is a generated, gitignored directory, regenerated on every `build:chunks` — same convention as `public/share-manifest.json` and the built chunk files.
+
 The chunk itself must export a default `MountFunction`:
 
 ```tsx
@@ -394,9 +458,13 @@ import { RemoteComponent, RemoteErrorBoundary } from '@chetand/share';
     expose="./Button"
     props={{ label: 'Click me', variant: 'primary' }}
     loadingFallback={<Spinner />}
+    hotReload={process.env.NODE_ENV !== 'production'}
+    hotReloadInterval={2000}
   />
 </RemoteErrorBoundary>;
 ```
+
+`hotReload` (both here and on `useRemoteComponent`, below) polls the mounted expose's chunk URL and swaps in a rebuilt version without a page reload — see [Hot-reloading remote chunks](#hot-reloading-remote-chunks).
 
 #### `loadManifest(url, signal?, retries?)`
 
@@ -421,6 +489,38 @@ import { checkVersion } from '@chetand/share';
 const compatible = checkVersion(manifest, '^1.0.0');
 if (!compatible) throw new Error('Host app version incompatible');
 ```
+
+#### Hot-reloading remote chunks
+
+Exposed chunks are served from a **stable filename** (e.g. `/button.chunk.js`) — rebuilding the host doesn't change the URL, but browsers cache an `import()`'d URL forever, so without help, neither reloading the manifest nor re-requesting the same URL ever picks up a rebuilt chunk's new code.
+
+Pass `hotReload` (to `useRemoteComponent` or `<RemoteComponent>`) to fix this in development: it polls the resolved chunk URL on an interval, hashes the raw response body, and — only when the hash actually changes — re-imports the chunk with a cache-busting query param and swaps in the new module, with no page reload and no `fallback` flash (the currently-mounted component just gets replaced).
+
+```tsx
+const { mount, loading, error } = useRemoteComponent(
+  'http://localhost:3001/share-manifest.json',
+  './Button',
+  undefined,
+  { hotReload: process.env.NODE_ENV !== 'production', hotReloadInterval: 2000 },
+);
+```
+
+The underlying poller is also exported directly, for custom UX:
+
+```ts
+import { watchChunkForChanges } from '@chetand/share';
+
+const stop = watchChunkForChanges(
+  'http://localhost:3001/button.chunk.js',
+  (mod) => console.log('chunk updated', mod),
+  { interval: 2000 },
+);
+
+// later
+stop();
+```
+
+This is unrelated to `bustManifestCache` — hot-reload solves "the mounted expose's chunk *content* changed," not "the manifest's structure changed." Adding or removing an expose still requires `bustManifestCache()` or a reload, same as before.
 
 #### `generateShareManifest(config)` — standalone
 
@@ -448,6 +548,8 @@ generateShareManifest({
 - **Manifest TTL.** The in-memory cache expires after 5 minutes. Call `bustManifestCache(url)` after a host deploy if you need immediate propagation, or implement a deploy webhook that calls it.
 - **No SSR for remote components.** `useRemoteComponent` is `'use client'` only. Remote components render client-side. Use `loadingFallback` to avoid visible flash.
 - **Version pinning is advisory.** `checkVersion` performs a semver range check and returns a boolean — it does not enforce compatibility at the chunk level. If the host and consumer have incompatible prop interfaces, you will get a runtime error, not a build error.
+- `hotReload` **re-fetches the full chunk body on every poll tick**, deliberately — this avoids depending on the dev server setting any particular caching header (`Last-Modified`/`ETag`), at the cost of bandwidth. Fine for development; leave it off (the default) in production.
+- `generateSharedDepShim` **requires the shared library to be `require()`-able** at build time (true for the vast majority of npm packages). An ESM-only package isn't handled — you'd need to hand-write a shim for it instead, the same way `react-shim.ts`/`react-dom-shim.ts` are hand-written.
 
 ---
 
@@ -526,10 +628,7 @@ C:/Program Files/nodejs/node.exe: error while loading shared libraries: ?: canno
 
 These are gaps in the current implementation that are on the roadmap but not yet shipped:
 
-- `@chetand/hydration`**: no code-splitting integration.** The boundary defers hydration but the bundle is still sent eagerly. First-class `next/dynamic` + boundary composition is not wired up yet.
 - `@chetand/hydration`**:** `strategy="interaction"` **triggers on any pointer contact.** There is no way to narrow the trigger to a specific event type (e.g. `click` only) through the declarative API. Use `withHydrationBoundary` with `useHydrationState` to build a custom trigger.
-- `@chetand/share`**: no hot-reload for remote chunks.** After the host rebuilds a chunk, the consumer must reload the page or call `bustManifestCache()` to pick up changes.
-- `@chetand/share`**: shared-dep compatibility check is major/minor only.** `resolveSharedDeps` treats "same major, own minor ≤ consumer's minor" as compatible and externalizes React on that basis — it doesn't account for patch-level breaking changes (rare, but not impossible) or peer libraries beyond React/React-DOM.
 - **No Edge Runtime support.** All three packages use browser APIs (`IntersectionObserver`, `requestIdleCallback`, `document`, `createRoot`) and are bundled for the browser. They cannot be imported in Next.js middleware or Edge routes.
 - **React 18 minimum.** Packages use `createRoot` and `Suspense` APIs introduced in React 18.
 

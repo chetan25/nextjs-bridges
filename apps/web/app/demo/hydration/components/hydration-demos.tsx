@@ -2,6 +2,14 @@
 import { useState } from 'react';
 import { HydrationBoundary, useHydrationState } from '@chetand/hydration';
 import { HeavyWidget } from './heavy-widget';
+// Type-only — erased at compile time, so it doesn't defeat the loader's code-splitting below.
+import type LazyHeavyWidgetComponent from './lazy-heavy-widget';
+
+// Explicit return type keeps this a simple, concrete function type for JSX prop-checking
+// instead of an inline arrow whose return type TS would otherwise have to infer inside
+// the loader/componentProps generic union, which trips a known TS inference quirk.
+const loadLazyHeavyWidget = (): Promise<{ default: typeof LazyHeavyWidgetComponent }> =>
+  import('./lazy-heavy-widget');
 
 // Fallback skeleton used across all demos
 function Skeleton({ label }: { label: string }) {
@@ -71,10 +79,18 @@ export function HydrationDemos() {
       {/* 2. visible */}
       <section>
         <h2>2 · visible — hydrates on scroll</h2>
-        <p>Component hydrates when scrolled into the viewport (IntersectionObserver threshold 0.1).</p>
-        <HydrationBoundary strategy="visible" fallback={<Skeleton label="visible target" />}>
-          <HeavyWidget label="Visible" color="#ede9fe" />
-        </HydrationBoundary>
+        <p>
+          Component hydrates when scrolled into the viewport (IntersectionObserver threshold
+          0.1). Also demonstrates code-splitting: <code>LazyHeavyWidget</code> is loaded via the{' '}
+          <code>loader</code> prop instead of a static import, so its chunk isn&apos;t fetched
+          until this section scrolls into view.
+        </p>
+        <HydrationBoundary
+          strategy="visible"
+          fallback={<Skeleton label="visible target" />}
+          loader={loadLazyHeavyWidget}
+          componentProps={{ label: 'Visible', color: '#ede9fe' }}
+        />
       </section>
 
       {/* 3. idle */}

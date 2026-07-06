@@ -37,15 +37,30 @@ function resolvedReactDomVersion(): string {
   return process.env.NEXT_PUBLIC_BRIDGE_VERSION_REACT_DOM ?? ReactDOM.version;
 }
 
+export interface BridgeSharedDepsProviderProps {
+  children: ReactNode;
+  /**
+   * Additional shared libraries beyond React/React-DOM, keyed by dependency
+   * name. The provider can't import an arbitrary library itself — every
+   * library has a different shape — so the consumer imports it normally and
+   * hands over the module plus its version (e.g. from the same
+   * NEXT_PUBLIC_BRIDGE_VERSION_* env var mechanism sharedDepsConfig() already
+   * generates for any dependency name).
+   */
+  shared?: Record<string, { module: unknown; version: string }>;
+}
+
 /**
- * Publishes the shell's own React/React-DOM instances on window.__bridgeShared
- * so externalized remote chunks (see shims/*.ts) can reference the exact same
- * module instance instead of bundling their own copy. Must be mounted above
- * every usage of <RemoteComponent>/useRemoteComponent in the tree — React
- * commits a parent's render before any descendant's effects run, so this
- * assignment is guaranteed to happen before useRemoteComponent's effect fires.
+ * Publishes the shell's own React/React-DOM instances (and any additional
+ * `shared` libraries) on window.__bridgeShared so externalized remote chunks
+ * (see shims/*.ts and shared-dep-shim-generator.ts) can reference the exact
+ * same module instance instead of bundling their own copy. Must be mounted
+ * above every usage of <RemoteComponent>/useRemoteComponent in the tree —
+ * React commits a parent's render before any descendant's effects run, so
+ * this assignment is guaranteed to happen before useRemoteComponent's effect
+ * fires.
  */
-export function BridgeSharedDepsProvider({ children }: { children: ReactNode }) {
+export function BridgeSharedDepsProvider({ children, shared }: BridgeSharedDepsProviderProps) {
   const initialized = useRef(false);
   if (!initialized.current && typeof window !== 'undefined') {
     const reactDomVersion = resolvedReactDomVersion();
@@ -53,6 +68,12 @@ export function BridgeSharedDepsProvider({ children }: { children: ReactNode }) 
       react: { ...React, version: resolvedReactVersion() },
       'react-dom': { ...ReactDOM, version: reactDomVersion },
       'react-dom/client': { ...ReactDOMClient, version: reactDomVersion },
+      ...Object.fromEntries(
+        Object.entries(shared ?? {}).map(([dep, { module, version }]) => [
+          dep,
+          { ...(module as object), version },
+        ]),
+      ),
     };
     initialized.current = true;
   }
