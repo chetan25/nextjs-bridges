@@ -1,6 +1,6 @@
 {
   "name": "@chetand/share",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "Runtime cross-app component sharing for Next.js 15 + Turbopack — manifest-based Module Federation alternative",
   "license": "MIT",
   "repository": {

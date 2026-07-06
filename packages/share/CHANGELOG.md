@@ -1,3 +1,16 @@
+## [@chetand/share-v2.0.0](https://github.com/chetan25/nextjs-bridges/compare/@chetand/share-v1.0.0...@chetand/share-v2.0.0) (2026-07-06)
+
+### ⚠ BREAKING CHANGES
+
+* **share:** assertSharedDepsAvailable's runtime version check no longer
+treats a bare (non-caret) entry.version as an exact-match requirement; it now
+always applies caret-range semantics, so a live shared dependency with a
+higher patch than declared is accepted instead of throwing.
+
+### Features
+
+* **share:** add hot-reload, patch-depth checks, generic peer-libs; hydration gets code-splitting ([5df8e3b](https://github.com/chetan25/nextjs-bridges/commit/5df8e3b83dbbcf03f960bff96b6dcb215becbea3))
+
 ## @chetand/share-v1.0.0 (2026-07-05)
 
 ### ⚠ BREAKING CHANGES
