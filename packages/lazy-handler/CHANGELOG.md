@@ -1,3 +1,9 @@
+## [@chetand/lazy-handler-v1.1.0](https://github.com/chetan25/nextjs-bridges/compare/@chetand/lazy-handler-v1.0.0...@chetand/lazy-handler-v1.1.0) (2026-07-06)
+
+### Features
+
+* **lazy-handler:** add loading-state API to useLazyHandler, Interactive, and withLazyHandlers ([0dbb72e](https://github.com/chetan25/nextjs-bridges/commit/0dbb72e015d36dbfa9ad5c4609357228ce5500f9))
+
 ## @chetand/lazy-handler-v1.0.0 (2026-07-05)
 
 ### ⚠ BREAKING CHANGES
