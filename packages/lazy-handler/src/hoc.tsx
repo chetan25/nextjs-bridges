@@ -1,5 +1,5 @@
 'use client';
-import { useRef, useCallback, type ComponentType } from 'react';
+import { useRef, useCallback, useState, type ComponentType } from 'react';
 import type { Loader } from './types';
 
 type HandlerMap = Record<string, Loader>;
@@ -22,6 +22,7 @@ export function withLazyHandlers<P extends object>(
     // Keep loader ref current without re-creating the stub on loader identity changes
     const loaderRef = useRef(firstLoader);
     loaderRef.current = firstLoader;
+    const [isLoading, setIsLoading] = useState(false);
 
     const stub = useCallback((...args: unknown[]) => {
       if (handlerRef.current) {
@@ -29,18 +30,21 @@ export function withLazyHandlers<P extends object>(
       }
       if (loadingRef.current) return;
       loadingRef.current = true;
+      setIsLoading(true);
       loaderRef.current()
         .then((mod) => {
           handlerRef.current = mod.default as (...a: unknown[]) => unknown;
           loadingRef.current = false;
+          setIsLoading(false);
           return handlerRef.current(...args);
         })
         .catch(() => {
           loadingRef.current = false;
+          setIsLoading(false);
         });
     }, []);
 
-    const handlerProps = { [propName]: stub } as Partial<P>;
+    const handlerProps = { [propName]: stub, isLoading } as unknown as Partial<P>;
     return <Component {...props} {...handlerProps} />;
   }
 

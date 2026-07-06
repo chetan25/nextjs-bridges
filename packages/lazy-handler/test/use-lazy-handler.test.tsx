@@ -12,8 +12,8 @@ function TestComponent({
   loader: Loader;
   options?: LazyHandlerOptions;
 }) {
-  const [ref] = useLazyHandler<HTMLDivElement>(loader, options);
-  return <div ref={ref} data-testid="target" />;
+  const [ref, , isLoading] = useLazyHandler<HTMLDivElement>(loader, options);
+  return <div ref={ref} data-testid="target" data-loading={String(isLoading)} />;
 }
 
 // Mirrors CartWidget's checkout button: the ref target doesn't exist on
@@ -248,5 +248,135 @@ describe('useLazyHandler', () => {
     });
 
     expect(loader).not.toHaveBeenCalled();
+  });
+
+  it('isLoading starts false', () => {
+    const loader = vi.fn(() => Promise.resolve({ default: vi.fn() }));
+    const { getByTestId } = render(<TestComponent loader={loader} />);
+    expect(getByTestId('target')).toHaveAttribute('data-loading', 'false');
+  });
+
+  it('isLoading becomes true while the loader is in flight and false once it settles', async () => {
+    let resolveLoader!: (v: { default: () => void }) => void;
+    const loader = vi.fn(
+      () => new Promise<{ default: () => void }>((r) => { resolveLoader = r; }),
+    );
+
+    const { getByTestId } = render(<TestComponent loader={loader} />);
+    const el = getByTestId('target');
+    expect(el).toHaveAttribute('data-loading', 'false');
+
+    fireEvent.click(el);
+    // Loader called synchronously by the stub, before the promise settles.
+    expect(el).toHaveAttribute('data-loading', 'true');
+
+    await act(async () => {
+      resolveLoader({ default: vi.fn() });
+      await Promise.resolve();
+    });
+
+    expect(el).toHaveAttribute('data-loading', 'false');
+  });
+
+  it('isLoading becomes true during a hover preload and false once it settles', async () => {
+    let resolveLoader!: (v: { default: () => void }) => void;
+    const loader = vi.fn(
+      () => new Promise<{ default: () => void }>((r) => { resolveLoader = r; }),
+    );
+
+    const { getByTestId } = render(
+      <TestComponent loader={loader} options={{ preloadOn: 'hover' }} />,
+    );
+    const el = getByTestId('target');
+
+    act(() => {
+      el.dispatchEvent(new Event('mouseenter', { bubbles: false }));
+    });
+    expect(el).toHaveAttribute('data-loading', 'true');
+
+    await act(async () => {
+      resolveLoader({ default: vi.fn() });
+      await Promise.resolve();
+    });
+
+    expect(el).toHaveAttribute('data-loading', 'false');
+  });
+
+  it('does not re-trigger isLoading on click after a preload already resolved it', async () => {
+    const handler = vi.fn();
+    const loader = vi.fn(() => Promise.resolve({ default: handler }));
+
+    const { getByTestId } = render(
+      <TestComponent loader={loader} options={{ preloadOn: 'hover' }} />,
+    );
+    const el = getByTestId('target');
+
+    await act(async () => {
+      el.dispatchEvent(new Event('mouseenter', { bubbles: false }));
+      await Promise.resolve();
+    });
+    expect(el).toHaveAttribute('data-loading', 'false');
+
+    await act(async () => {
+      fireEvent.click(el);
+      await Promise.resolve();
+    });
+
+    expect(el).toHaveAttribute('data-loading', 'false');
+    expect(loader).toHaveBeenCalledTimes(1);
+    expect(handler).toHaveBeenCalledTimes(1);
+  });
+
+  it('isLoading returns to false after a rejected loader, and can cycle true again on retry', async () => {
+    let rejectLoader!: (e: Error) => void;
+    const handler = vi.fn();
+    const loader = vi
+      .fn()
+      .mockImplementationOnce(
+        () => new Promise((_, rej) => { rejectLoader = rej; }),
+      )
+      .mockImplementationOnce(() => Promise.resolve({ default: handler }));
+
+    const { getByTestId } = render(<TestComponent loader={loader} />);
+    const el = getByTestId('target');
+
+    fireEvent.click(el);
+    expect(el).toHaveAttribute('data-loading', 'true');
+
+    await act(async () => {
+      rejectLoader(new Error('load failed'));
+      await Promise.resolve();
+    });
+    expect(el).toHaveAttribute('data-loading', 'false');
+
+    await act(async () => {
+      fireEvent.click(el);
+      await Promise.resolve();
+    });
+
+    expect(loader).toHaveBeenCalledTimes(2);
+    expect(handler).toHaveBeenCalledTimes(1);
+    expect(el).toHaveAttribute('data-loading', 'false');
+  });
+
+  it('does not warn or throw when unmounting mid-load', async () => {
+    let resolveLoader!: (v: { default: () => void }) => void;
+    const loader = vi.fn(
+      () => new Promise<{ default: () => void }>((r) => { resolveLoader = r; }),
+    );
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const { getByTestId, unmount } = render(<TestComponent loader={loader} />);
+    const el = getByTestId('target');
+
+    fireEvent.click(el);
+    unmount();
+
+    await act(async () => {
+      resolveLoader({ default: vi.fn() });
+      await Promise.resolve();
+    });
+
+    expect(consoleError).not.toHaveBeenCalled();
   });
 });

@@ -53,21 +53,26 @@ The result: your handler JS is not downloaded until a user actually triggers the
 
 #### `useLazyHandler(loader, options?)`
 
-The core hook. Returns a `[ref, stub]` tuple.
+The core hook. Returns a `[ref, stub, isLoading]` tuple.
 
 ```tsx
 'use client';
 import { useLazyHandler } from '@chetand/lazy-handler';
 
 export function NotifyButton() {
-  const [ref] = useLazyHandler<HTMLButtonElement>(
+  const [ref, , isLoading] = useLazyHandler<HTMLButtonElement>(
     () => import('./handlers/notify'), // loaded only on first click
     { preloadOn: 'hover' }, // optional: preload on hover
   );
 
-  return <button ref={ref}>Notify me</button>;
+  return <button ref={ref}>{isLoading ? <Spinner /> : 'Notify me'}</button>;
 }
 ```
+
+`isLoading` is `true` whenever the handler module is being fetched — whether that fetch was
+started by the real event or by a `preloadOn` strategy — and `false` otherwise. It only cycles
+once per successful load (the module is cached after that); a failed load resets it, so the next
+trigger can retry.
 
 **Options**
 
@@ -110,7 +115,21 @@ import { Interactive } from '@chetand/lazy-handler';
 <Interactive on={{ mouseenter: () => import('./handlers/prefetch-hover') }}>
   <div>Hover to prefetch</div>
 </Interactive>;
+
+{
+  /* Show a spinner while the handler module loads */
+}
+<Interactive
+  on={{ click: () => import('./handlers/notify') }}
+  loadingFallback={<Spinner />}
+>
+  <button>Notify me</button>
+</Interactive>;
 ```
+
+`loadingFallback` (optional) is rendered in place of `children` while the handler module is being
+fetched; the wrapping element (and its ref/listener) never changes — only the rendered content
+swaps. Omitting it reproduces the previous behavior exactly.
 
 #### `withLazyHandlers(Component, handlers)`
 
@@ -126,6 +145,19 @@ const LazyButton = withLazyHandlers(Button, {
 
 // Use exactly like <Button>
 <LazyButton>Submit</LazyButton>;
+```
+
+The wrapped component always receives an `isLoading: boolean` prop alongside its handler prop
+(e.g. `onClick`), reflecting whether the click-triggered load is in flight:
+
+```tsx
+function Button({ isLoading, onClick }: ButtonProps) {
+  return (
+    <button onClick={onClick} disabled={isLoading}>
+      {isLoading ? 'Loading...' : 'Submit'}
+    </button>
+  );
+}
 ```
 
 ### Gotchas
@@ -494,7 +526,6 @@ C:/Program Files/nodejs/node.exe: error while loading shared libraries: ?: canno
 
 These are gaps in the current implementation that are on the roadmap but not yet shipped:
 
-- `@chetand/lazy-handler`**: no loading state API.** The stub fires the real handler after the `import()` resolves but there is no built-in way to show a spinner during the load. You can work around this by managing state in the parent component.
 - `@chetand/hydration`**: no code-splitting integration.** The boundary defers hydration but the bundle is still sent eagerly. First-class `next/dynamic` + boundary composition is not wired up yet.
 - `@chetand/hydration`**:** `strategy="interaction"` **triggers on any pointer contact.** There is no way to narrow the trigger to a specific event type (e.g. `click` only) through the declarative API. Use `withHydrationBoundary` with `useHydrationState` to build a custom trigger.
 - `@chetand/share`**: no hot-reload for remote chunks.** After the host rebuilds a chunk, the consumer must reload the page or call `bustManifestCache()` to pick up changes.

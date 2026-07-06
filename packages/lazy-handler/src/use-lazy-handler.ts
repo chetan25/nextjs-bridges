@@ -13,7 +13,7 @@ const DOM_PRELOAD_EVENTS: Record<string, string> = {
 export function useLazyHandler<T extends Element>(
   loader: Loader,
   options: LazyHandlerOptions = {},
-): [(node: T | null) => void, (e: Event) => void] {
+): [(node: T | null) => void, (e: Event) => void, boolean] {
   const { event = 'click', capture = false, preloadOn = 'none' } = options;
   const strategies: PreloadStrategy[] = Array.isArray(preloadOn) ? preloadOn : [preloadOn];
   // Stable string key for the effect's dependency array. `strategies` is a
@@ -29,6 +29,7 @@ export function useLazyHandler<T extends Element>(
   // trigger the effect below to re-run once that element actually appears.
   const [node, setNode] = useState<T | null>(null);
   const ref = useCallback((el: T | null) => setNode(el), []);
+  const [isLoading, setIsLoading] = useState(false);
   const handlerRef = useRef<HandlerFn | null>(null);
   const loaderRef = useRef(loader);
   const loadingRef = useRef(false);
@@ -38,6 +39,27 @@ export function useLazyHandler<T extends Element>(
   // Keep loader ref current without triggering effects (safe in 'use client')
   loaderRef.current = loader;
 
+  // Shared by the real event (stub) and every preloadOn strategy (doPreload):
+  // flips isLoading/loadingRef around the loader() call, regardless of what
+  // triggered it — isLoading answers "is the module currently being fetched",
+  // not "did the user's own click start this fetch".
+  const runLoad = useCallback((onLoaded?: (fn: HandlerFn) => void) => {
+    loadingRef.current = true;
+    setIsLoading(true);
+    loaderRef.current()
+      .then((mod) => {
+        loadingRef.current = false;
+        if (cancelledRef.current) return;
+        handlerRef.current = mod.default;
+        setIsLoading(false);
+        onLoaded?.(mod.default);
+      })
+      .catch(() => {
+        loadingRef.current = false;
+        if (!cancelledRef.current) setIsLoading(false);
+      });
+  }, []);
+
   const stub = useCallback((e: Event) => {
     e.stopImmediatePropagation();
     if (handlerRef.current) {
@@ -46,7 +68,6 @@ export function useLazyHandler<T extends Element>(
     }
     // Guard against double-load on rapid clicks while import() is in-flight
     if (loadingRef.current) return;
-    loadingRef.current = true;
     // Capture currentTarget now — the browser resets it to null after dispatch.
     const capturedCurrentTarget = e.currentTarget;
     const asyncEvent = new Proxy(e, {
@@ -56,17 +77,8 @@ export function useLazyHandler<T extends Element>(
         return typeof val === 'function' ? (val as (...a: unknown[]) => unknown).bind(target) : val;
       },
     });
-    loaderRef.current()
-      .then((mod) => {
-        if (cancelledRef.current) return;
-        handlerRef.current = mod.default;
-        loadingRef.current = false;
-        mod.default(asyncEvent);
-      })
-      .catch(() => {
-        loadingRef.current = false;
-      });
-  }, []);
+    runLoad((fn) => fn(asyncEvent));
+  }, [runLoad]);
 
   useEffect(() => {
     const el = node;
@@ -76,17 +88,7 @@ export function useLazyHandler<T extends Element>(
 
     const doPreload = () => {
       if (!handlerRef.current && !loadingRef.current) {
-        loadingRef.current = true;
-        loaderRef.current()
-          .then((mod) => {
-            if (!cancelledRef.current) {
-              handlerRef.current = mod.default;
-            }
-            loadingRef.current = false;
-          })
-          .catch(() => {
-            loadingRef.current = false;
-          });
+        runLoad();
       }
     };
 
@@ -141,7 +143,7 @@ export function useLazyHandler<T extends Element>(
       teardowns.forEach((fn) => fn());
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [node, event, capture, strategiesKey, stub]);
+  }, [node, event, capture, strategiesKey, stub, runLoad]);
 
-  return [ref, stub];
+  return [ref, stub, isLoading];
 }

@@ -14,6 +14,8 @@ interface InteractiveProps<E extends ElementType = 'span'> {
   on: SingleEventLoader;
   children: ReactNode;
   preloadOn?: LazyHandlerOptions['preloadOn'];
+  /** Rendered in place of children while the handler module is being fetched. */
+  loadingFallback?: ReactNode;
 }
 
 // Polymorphic <Interactive> — defaults to <span> to avoid breaking inline/table contexts.
@@ -22,6 +24,7 @@ export function Interactive<E extends ElementType = 'span'>({
   on,
   children,
   preloadOn = 'none',
+  loadingFallback,
 }: InteractiveProps<E>) {
   const Tag = (as ?? 'span') as ElementType;
 
@@ -36,10 +39,13 @@ export function Interactive<E extends ElementType = 'span'>({
   const primaryEvent = keys[0] as keyof HTMLElementEventMap | undefined;
   const primaryLoader = primaryEvent ? on[primaryEvent] : undefined;
 
-  const [ref] = useLazyHandler(
+  const [ref, , isLoading] = useLazyHandler(
     primaryLoader ?? (() => Promise.resolve({ default: () => {} })),
     { event: primaryEvent ?? 'click', preloadOn },
   );
 
-  return <Tag ref={ref}>{children}</Tag>;
+  // Tag (and its ref/listener) never changes — only the rendered content swaps.
+  return (
+    <Tag ref={ref}>{isLoading && loadingFallback !== undefined ? loadingFallback : children}</Tag>
+  );
 }
