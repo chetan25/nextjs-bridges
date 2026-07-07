@@ -39,13 +39,15 @@ import { HydrationBoundary } from '@chetand/hydration';
 
 **Props**
 
-| Prop         | Type                | Default     | Description                                               |
-| ------------ | ------------------- | ----------- | --------------------------------------------------------- |
-| `strategy`   | `HydrationStrategy` | `'visible'` | When to hydrate (see table below)                         |
+| Prop         | Type                                   | Default     | Description                                               |
+| ------------ | --------------------------------------- | ----------- | --------------------------------------------------------- |
+| `strategy`   | `HydrationStrategy \| HydrationStrategy[]` | `'visible'` | When to hydrate (see table below). An array arms multiple strategies at once — whichever fires first wins. |
 | `fallback`   | `ReactNode`         | `null`      | Rendered while dehydrated                                 |
 | `threshold`  | `number \| number[]` | `0.1`      | IntersectionObserver threshold — `visible` strategy only  |
 | `rootMargin` | `string`            | `'200px'`   | IntersectionObserver rootMargin — `visible` strategy only |
+| `interactionEvents` | `Array<keyof HTMLElementEventMap>` | `['pointerenter', 'focusin', 'touchstart']` | DOM events that trigger hydration — `interaction` strategy only |
 | `onHydrate`  | `() => void`        | —           | Fired once when hydration occurs                          |
+| `errorFallback` | `ReactNode \| ((error: Error) => ReactNode)` | —      | Rendered instead of crashing the tree if `loader` rejects  |
 
 **Strategies**
 
@@ -56,6 +58,41 @@ import { HydrationBoundary } from '@chetand/hydration';
 | `idle`        | The browser is idle (`requestIdleCallback` / `setTimeout(0)` fallback) |
 | `interaction` | The user moves a pointer over, tabs into, or touches the boundary      |
 | `manual`      | `hydrateNow()` is called imperatively                                  |
+
+#### Combining strategies
+
+Pass an array to hydrate on whichever strategy fires first — an OR condition, evaluated by one boundary instead of nesting several:
+
+```tsx
+<HydrationBoundary strategy={['visible', 'idle']} fallback={<Skeleton />}>
+  <HeavyWidget />
+</HydrationBoundary>
+```
+
+This hydrates as soon as the boundary scrolls into view **or** the browser goes idle, whichever happens first — the other strategy's listener is torn down once one of them fires. This differs from [nesting boundaries](#nesting), which is an AND condition (each layer must hydrate before the next can start listening).
+
+#### Narrowing the `interaction` strategy
+
+By default `strategy="interaction"` hydrates on any pointer contact — `pointerenter`, `focusin`, or `touchstart`. Pass `interactionEvents` to require a specific event instead:
+
+```tsx
+<HydrationBoundary strategy="interaction" interactionEvents={['click']} fallback={<Skeleton />}>
+  <HeavyWidget />
+</HydrationBoundary>
+```
+
+#### Handling a failed `loader`
+
+A rejected `loader` promise throws during render, same as any `React.lazy` component. Pass `errorFallback` to handle it declaratively instead of crashing the tree (or supplying your own error boundary):
+
+```tsx
+<HydrationBoundary
+  strategy="visible"
+  fallback={<Skeleton />}
+  loader={() => import('./HeavyWidget')}
+  errorFallback={(error) => <p>Couldn't load: {error.message}</p>}
+/>
+```
 
 ### `useHydrationState()`
 
@@ -108,11 +145,6 @@ Boundaries nest independently. Each has its own trigger and state.
 - **No SSR hydration mismatch.** The boundary renders `fallback` on the server as well, so the initial HTML always matches the dehydrated state.
 - `IntersectionObserver` **fallback.** When unavailable (Node, jsdom), `strategy="visible"` falls back to hydrating immediately.
 - `onHydrate` **stability.** The callback ref is always kept current without causing effects to re-run; you can pass an inline function safely.
-
-## Known limitations
-
-- **No code-splitting integration.** The boundary defers hydration but the bundle is still sent eagerly. First-class `next/dynamic` + boundary composition is not wired up yet.
-- `strategy="interaction"` **triggers on any pointer contact.** There is no way to narrow the trigger to a specific event type (e.g. `click` only) through the declarative API. Use `withHydrationBoundary` with `useHydrationState` to build a custom trigger.
 
 ## License
 

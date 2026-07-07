@@ -106,7 +106,14 @@ describe('HydrationBoundary', () => {
 
     expect(screen.getByTestId('child')).toBeInTheDocument();
 
-    (window as Record<string, unknown>).requestIdleCallback = ric;
+    // Restore precisely: if the property never existed, reassigning `ric`
+    // (undefined) would leave it defined-but-undefined, and a later
+    // `'requestIdleCallback' in window` check would wrongly report present.
+    if (ric === undefined) {
+      delete (window as Record<string, unknown>).requestIdleCallback;
+    } else {
+      (window as Record<string, unknown>).requestIdleCallback = ric;
+    }
     vi.useRealTimers();
   });
 
@@ -125,6 +132,65 @@ describe('HydrationBoundary', () => {
     });
 
     expect(screen.getByTestId('child')).toBeInTheDocument();
+  });
+
+  it('interactionEvents narrows the interaction strategy to a specific event', async () => {
+    render(
+      <HydrationBoundary
+        strategy="interaction"
+        interactionEvents={['click']}
+        fallback={<div data-testid="fallback" />}
+      >
+        <Child />
+      </HydrationBoundary>,
+    );
+
+    const boundary = screen.getByTestId('fallback').parentElement!;
+
+    // The default pointerenter no longer triggers hydration once narrowed.
+    await act(async () => {
+      fireEvent.pointerEnter(boundary);
+    });
+    expect(screen.queryByTestId('child')).not.toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(boundary);
+    });
+    expect(screen.getByTestId('child')).toBeInTheDocument();
+  });
+
+  it('array strategy hydrates on whichever strategy fires first, tearing down the rest', async () => {
+    vi.useFakeTimers();
+
+    render(
+      <HydrationBoundary strategy={['idle', 'visible']} fallback={<div data-testid="fallback" />}>
+        <Child />
+      </HydrationBoundary>,
+    );
+
+    expect(screen.getByTestId('fallback')).toBeInTheDocument();
+    expect(mockObserve).toHaveBeenCalled();
+
+    await act(async () => {
+      vi.runAllTimers();
+    });
+
+    expect(screen.getByTestId('child')).toBeInTheDocument();
+    // 'idle' fired first — the still-pending 'visible' observer is torn down.
+    expect(mockDisconnect).toHaveBeenCalled();
+
+    vi.useRealTimers();
+  });
+
+  it('array strategy including "eager" hydrates immediately, same as a bare "eager" strategy', () => {
+    render(
+      <HydrationBoundary strategy={['eager', 'idle']} fallback={<div data-testid="fallback" />}>
+        <Child />
+      </HydrationBoundary>,
+    );
+
+    expect(screen.getByTestId('child')).toBeInTheDocument();
+    expect(screen.queryByTestId('fallback')).not.toBeInTheDocument();
   });
 
   it('manual strategy: hydrateNow() in fallback slot triggers hydration', async () => {
@@ -269,6 +335,26 @@ describe('HydrationBoundary', () => {
       });
 
       expect(loader).toHaveBeenCalledTimes(1);
+    });
+
+    it('errorFallback renders instead of crashing the tree when the loader rejects', async () => {
+      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const loader = vi.fn(() => Promise.reject(new Error('chunk failed')));
+
+      render(
+        <HydrationBoundary
+          strategy="eager"
+          fallback={<div data-testid="fallback" />}
+          loader={loader}
+          errorFallback={(error) => <div data-testid="boundary-error">{error.message}</div>}
+        />,
+      );
+
+      await waitFor(() =>
+        expect(screen.getByTestId('boundary-error')).toHaveTextContent('chunk failed'),
+      );
+
+      consoleError.mockRestore();
     });
   });
 });
