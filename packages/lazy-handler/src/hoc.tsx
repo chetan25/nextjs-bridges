@@ -23,6 +23,7 @@ export function withLazyHandlers<P extends object>(
     const loaderRef = useRef(firstLoader);
     loaderRef.current = firstLoader;
     const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<Error | null>(null);
 
     const stub = useCallback((...args: unknown[]) => {
       if (handlerRef.current) {
@@ -31,6 +32,7 @@ export function withLazyHandlers<P extends object>(
       if (loadingRef.current) return;
       loadingRef.current = true;
       setIsLoading(true);
+      setError(null);
       loaderRef.current()
         .then((mod) => {
           handlerRef.current = mod.default as (...a: unknown[]) => unknown;
@@ -38,13 +40,14 @@ export function withLazyHandlers<P extends object>(
           setIsLoading(false);
           return handlerRef.current(...args);
         })
-        .catch(() => {
+        .catch((err: unknown) => {
           loadingRef.current = false;
           setIsLoading(false);
+          setError(err instanceof Error ? err : new Error(String(err)));
         });
     }, []);
 
-    const handlerProps = { [propName]: stub, isLoading } as unknown as Partial<P>;
+    const handlerProps = { [propName]: stub, isLoading, error } as unknown as Partial<P>;
     return <Component {...props} {...handlerProps} />;
   }
 

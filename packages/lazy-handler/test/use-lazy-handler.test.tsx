@@ -12,8 +12,15 @@ function TestComponent({
   loader: Loader;
   options?: LazyHandlerOptions;
 }) {
-  const [ref, , isLoading] = useLazyHandler<HTMLDivElement>(loader, options);
-  return <div ref={ref} data-testid="target" data-loading={String(isLoading)} />;
+  const [ref, , isLoading, error] = useLazyHandler<HTMLDivElement>(loader, options);
+  return (
+    <div
+      ref={ref}
+      data-testid="target"
+      data-loading={String(isLoading)}
+      data-error={error ? error.message : ''}
+    />
+  );
 }
 
 // Mirrors CartWidget's checkout button: the ref target doesn't exist on
@@ -357,6 +364,113 @@ describe('useLazyHandler', () => {
     expect(loader).toHaveBeenCalledTimes(2);
     expect(handler).toHaveBeenCalledTimes(1);
     expect(el).toHaveAttribute('data-loading', 'false');
+  });
+
+  it('sets error when the loader rejects, and calls onError with the normalized error', async () => {
+    const onError = vi.fn();
+    const loader = vi.fn(() => Promise.reject(new Error('network blip')));
+
+    const { getByTestId } = render(
+      <TestComponent loader={loader} options={{ onError }} />,
+    );
+    const el = getByTestId('target');
+
+    await act(async () => {
+      fireEvent.click(el);
+      await Promise.resolve();
+    });
+
+    expect(el).toHaveAttribute('data-error', 'network blip');
+    expect(onError).toHaveBeenCalledTimes(1);
+    expect(onError).toHaveBeenCalledWith(expect.objectContaining({ message: 'network blip' }));
+  });
+
+  it('normalizes a non-Error rejection into an Error', async () => {
+    const loader = vi.fn(() => Promise.reject('plain string rejection'));
+
+    const { getByTestId } = render(<TestComponent loader={loader} />);
+    const el = getByTestId('target');
+
+    await act(async () => {
+      fireEvent.click(el);
+      await Promise.resolve();
+    });
+
+    expect(el).toHaveAttribute('data-error', 'plain string rejection');
+  });
+
+  it('clears a prior error once a retry starts loading again', async () => {
+    let rejectLoader!: (e: Error) => void;
+    const handler = vi.fn();
+    const loader = vi
+      .fn()
+      .mockImplementationOnce(() => new Promise((_, rej) => { rejectLoader = rej; }))
+      .mockImplementationOnce(() => Promise.resolve({ default: handler }));
+
+    const { getByTestId } = render(<TestComponent loader={loader} />);
+    const el = getByTestId('target');
+
+    fireEvent.click(el);
+    await act(async () => {
+      rejectLoader(new Error('first attempt failed'));
+      await Promise.resolve();
+    });
+    expect(el).toHaveAttribute('data-error', 'first attempt failed');
+
+    await act(async () => {
+      fireEvent.click(el);
+      await Promise.resolve();
+    });
+    expect(el).toHaveAttribute('data-error', '');
+  });
+
+  it('does not call onError after unmount', async () => {
+    const onError = vi.fn();
+    let rejectLoader!: (e: Error) => void;
+    const loader = vi.fn(() => new Promise((_, rej) => { rejectLoader = rej; }));
+
+    const { getByTestId, unmount } = render(
+      <TestComponent loader={loader} options={{ onError }} />,
+    );
+    const el = getByTestId('target');
+
+    fireEvent.click(el);
+    unmount();
+
+    await act(async () => {
+      rejectLoader(new Error('too late'));
+      await Promise.resolve();
+    });
+
+    expect(onError).not.toHaveBeenCalled();
+  });
+
+  it('calls preventDefault synchronously on interception when preventDefault=true', () => {
+    const loader = vi.fn(() => new Promise<{ default: () => void }>(() => {}));
+    const { getByTestId } = render(
+      <TestComponent loader={loader} options={{ event: 'submit', preventDefault: true }} />,
+    );
+    const el = getByTestId('target');
+
+    const event = new Event('submit', { bubbles: true, cancelable: true });
+    act(() => {
+      el.dispatchEvent(event);
+    });
+
+    expect(event.defaultPrevented).toBe(true);
+  });
+
+  it('does not call preventDefault when preventDefault is unset (default click behavior unaffected)', () => {
+    const loader = vi.fn(() => new Promise<{ default: () => void }>(() => {}));
+    const { getByTestId } = render(<TestComponent loader={loader} />);
+    const el = getByTestId('target');
+
+    const event = new Event('click', { bubbles: true, cancelable: true });
+    act(() => {
+      el.dispatchEvent(event);
+    });
+
+    expect(event.defaultPrevented).toBe(false);
   });
 
   it('does not warn or throw when unmounting mid-load', async () => {

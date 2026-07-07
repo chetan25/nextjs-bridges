@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { Interactive } from '../src/interactive';
 
@@ -132,5 +132,46 @@ describe('<Interactive>', () => {
       expect(screen.getByRole('button', { name: /click me/i })).toBeInTheDocument(),
     );
     expect(container.querySelector('div')).toBe(wrapper);
+  });
+
+  it('renders errorFallback when the loader rejects, and calls onError', async () => {
+    const onError = vi.fn();
+    const loader = vi.fn(() => Promise.reject(new Error('load failed')));
+
+    render(
+      <Interactive
+        on={{ click: loader }}
+        errorFallback={(error) => <span>Failed: {error.message}</span>}
+        onError={onError}
+      >
+        <button>Click me</button>
+      </Interactive>,
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /click me/i }));
+      await Promise.resolve();
+    });
+
+    expect(screen.getByText('Failed: load failed')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /click me/i })).not.toBeInTheDocument();
+    expect(onError).toHaveBeenCalledWith(expect.objectContaining({ message: 'load failed' }));
+  });
+
+  it('keeps rendering children on load failure when errorFallback is omitted', async () => {
+    const loader = vi.fn(() => Promise.reject(new Error('load failed')));
+
+    render(
+      <Interactive on={{ click: loader }}>
+        <button>Click me</button>
+      </Interactive>,
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /click me/i }));
+      await Promise.resolve();
+    });
+
+    expect(screen.getByRole('button', { name: /click me/i })).toBeInTheDocument();
   });
 });

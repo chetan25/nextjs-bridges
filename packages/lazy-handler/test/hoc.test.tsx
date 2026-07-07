@@ -6,11 +6,13 @@ function Button({
   onClick,
   onMouseEnter,
   isLoading,
+  error,
   children,
 }: {
   onClick?: (e: Event) => void;
   onMouseEnter?: (e: Event) => void;
   isLoading?: boolean;
+  error?: Error | null;
   children?: React.ReactNode;
 }) {
   return (
@@ -18,6 +20,7 @@ function Button({
       onClick={onClick as React.MouseEventHandler}
       onMouseEnter={onMouseEnter as React.MouseEventHandler}
       data-loading={String(isLoading)}
+      data-error={error ? error.message : ''}
     >
       {children}
     </button>
@@ -115,5 +118,21 @@ describe('withLazyHandlers', () => {
     });
 
     expect(btn).toHaveAttribute('data-loading', 'false');
+  });
+
+  it('injects error=null before any interaction, and the rejection once the load fails', async () => {
+    const loader = vi.fn(() => Promise.reject(new Error('load failed')));
+    const LazyButton = withLazyHandlers(Button, { click: loader });
+    render(<LazyButton>click me</LazyButton>);
+
+    const btn = screen.getByRole('button');
+    expect(btn).toHaveAttribute('data-error', '');
+
+    await act(async () => {
+      fireEvent.click(btn);
+      await Promise.resolve();
+    });
+
+    expect(btn).toHaveAttribute('data-error', 'load failed');
   });
 });

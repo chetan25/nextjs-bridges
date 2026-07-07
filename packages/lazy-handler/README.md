@@ -29,7 +29,7 @@ The result: your handler JS is not downloaded until a user actually triggers the
 
 ### `useLazyHandler(loader, options?)`
 
-The core hook. Returns a `[ref, stub]` tuple.
+The core hook. Returns a `[ref, stub, isLoading, error]` tuple. `error` is `null` unless the loader promise rejected — it clears again as soon as a retry starts loading.
 
 ```tsx
 'use client';
@@ -52,6 +52,8 @@ export function NotifyButton() {
 | `event`     | `keyof HTMLElementEventMap`                                      | `'click'` | DOM event to intercept                                           |
 | `capture`   | `boolean`                                                        | `false`   | Use capture phase                                                 |
 | `preloadOn` | `'hover' \| 'focus' \| 'visible' \| 'idle' \| 'none'`, or an array of these | `'none'`  | Trigger an early prefetch before the user fires the real event. An array arms multiple strategies at once — whichever fires first wins. |
+| `preventDefault` | `boolean`                                                    | `false`   | Call `event.preventDefault()` synchronously on interception, before the handler module loads. Needed for events with a native default action (e.g. `submit`) — see `useLazyForm` below. |
+| `onError`   | `(error: Error) => void`                                          | —         | Called when the loader promise rejects — cold load or preload alike. |
 
 Your handler module must export a default function:
 
@@ -61,6 +63,40 @@ export default function notify(event: Event) {
   // runs only when the user clicks
 }
 ```
+
+### `useLazyForm(loader, options?)`
+
+`useLazyHandler` specialized for the extremely common "defer the submit handler" case. A bare `useLazyHandler(loader, { event: 'submit' })` is unsafe: the browser's native submit (page navigation) fires synchronously right after dispatch, before an async `import()` can resolve — so the page would navigate away before your handler ever runs. `useLazyForm` always calls `preventDefault()` on interception, cold or warm, so this can't happen. Returns a `[ref, isLoading]` tuple — attach `ref` to the `<form>` element.
+
+```tsx
+'use client';
+import { useLazyForm } from '@chetand/lazy-handler';
+
+export function SignupForm() {
+  const [ref, isLoading] = useLazyForm(
+    () => import('./handlers/submit-signup'), // loaded only on first submit
+    { preloadOn: 'idle' }, // optional: preload once the browser is idle
+  );
+
+  return (
+    <form ref={ref}>
+      {/* ...fields... */}
+      <button type="submit" disabled={isLoading}>{isLoading ? 'Loading…' : 'Sign up'}</button>
+    </form>
+  );
+}
+```
+
+```ts
+// handlers/submit-signup.ts
+export default function submitSignup(event: SubmitEvent) {
+  // event.preventDefault() has already been called for you — no need to call it here
+  const data = new FormData(event.currentTarget as HTMLFormElement);
+  // ...
+}
+```
+
+`options` accepts the same `preloadOn` as `useLazyHandler`; `event` and `preventDefault` are fixed internally and can't be overridden.
 
 ### `<Interactive>`
 
@@ -86,7 +122,20 @@ import { Interactive } from '@chetand/lazy-handler';
 <Interactive on={{ mouseenter: () => import('./handlers/prefetch-hover') }}>
   <div>Hover to prefetch</div>
 </Interactive>;
+
+{
+  /* Handle a failed load */
+}
+<Interactive
+  on={{ click: () => import('./handlers/notify') }}
+  errorFallback={(error) => <span>Couldn't load: {error.message}</span>}
+  onError={(error) => analytics.track('handler-load-failed', { message: error.message })}
+>
+  <button>Notify me</button>
+</Interactive>;
 ```
+
+`errorFallback` (optional) is rendered in place of `children` if the handler module fails to load; omitting it keeps rendering `children` on failure, same as before this option existed. `onError` (optional) fires on every failed load — cold load or preload alike.
 
 ### `withLazyHandlers(Component, handlers)`
 
@@ -104,6 +153,8 @@ const LazyButton = withLazyHandlers(Button, {
 <LazyButton>Submit</LazyButton>;
 ```
 
+The wrapped component always receives `isLoading: boolean` and `error: Error | null` props alongside its handler prop (e.g. `onClick`), reflecting the state of the click-triggered load.
+
 ## Gotchas
 
 - `currentTarget` **is captured synchronously.** The browser nulls out `event.currentTarget` after the dispatch cycle. The stub captures it before the `import()` call and replays it on the async event via a `Proxy`, so your handler receives a correct `currentTarget` even though it runs after `await`.
@@ -112,10 +163,11 @@ const LazyButton = withLazyHandlers(Button, {
 - **No SSR output.** The stub is never attached on the server. The element renders as static HTML until the client hydrates — which is the point.
 - `preloadOn: 'visible'` **requires** `IntersectionObserver`**.** Falls back to no preload in environments that lack it (e.g. Node/jsdom test environments).
 - `preloadOn: 'idle'` **needs no DOM event.** It schedules via `requestIdleCallback` (falling back to `setTimeout(fn, 0)` where unavailable) as soon as the element mounts. Pass an array (e.g. `preloadOn: ['hover', 'idle']`) to arm multiple strategies at once — the first one to fire loads the module; the rest become no-ops.
+- **A failed `hover`/`focus` preload isn't retried on its own.** Those listeners are armed with `{ once: true }`; if the preload attempt fails, the listener isn't re-armed. The real trigger event (e.g. `click`) still retries the load normally — only the early-preload optimization is lost for that element.
 
-## Known limitation
+## Known limitations
 
-No loading-state API — there's no built-in way to show a spinner while the handler is in flight. Manage that state in the parent component if you need it.
+`withLazyHandlers` has no `preloadOn` support — only `useLazyHandler` and `<Interactive>` can preload early. Use one of those two if you need a preload strategy.
 
 ## License
 

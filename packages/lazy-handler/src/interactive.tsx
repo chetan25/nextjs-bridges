@@ -9,6 +9,8 @@ type SingleEventLoader = {
   [K in keyof HTMLElementEventMap]?: Loader;
 };
 
+type ErrorFallbackProp = ReactNode | ((error: Error) => ReactNode);
+
 interface InteractiveProps<E extends ElementType = 'span'> {
   as?: E;
   on: SingleEventLoader;
@@ -16,6 +18,10 @@ interface InteractiveProps<E extends ElementType = 'span'> {
   preloadOn?: LazyHandlerOptions['preloadOn'];
   /** Rendered in place of children while the handler module is being fetched. */
   loadingFallback?: ReactNode;
+  /** Rendered in place of children if the handler module fails to load. */
+  errorFallback?: ErrorFallbackProp;
+  /** Called when the handler module fails to load — cold load or preload alike. */
+  onError?: (error: Error) => void;
 }
 
 // Polymorphic <Interactive> — defaults to <span> to avoid breaking inline/table contexts.
@@ -25,6 +31,8 @@ export function Interactive<E extends ElementType = 'span'>({
   children,
   preloadOn = 'none',
   loadingFallback,
+  errorFallback,
+  onError,
 }: InteractiveProps<E>) {
   const Tag = (as ?? 'span') as ElementType;
 
@@ -39,13 +47,18 @@ export function Interactive<E extends ElementType = 'span'>({
   const primaryEvent = keys[0] as keyof HTMLElementEventMap | undefined;
   const primaryLoader = primaryEvent ? on[primaryEvent] : undefined;
 
-  const [ref, , isLoading] = useLazyHandler(
+  const [ref, , isLoading, error] = useLazyHandler(
     primaryLoader ?? (() => Promise.resolve({ default: () => {} })),
-    { event: primaryEvent ?? 'click', preloadOn },
+    { event: primaryEvent ?? 'click', preloadOn, ...(onError ? { onError } : {}) },
   );
 
+  let content = children;
+  if (isLoading && loadingFallback !== undefined) {
+    content = loadingFallback;
+  } else if (error && errorFallback !== undefined) {
+    content = typeof errorFallback === 'function' ? errorFallback(error) : errorFallback;
+  }
+
   // Tag (and its ref/listener) never changes — only the rendered content swaps.
-  return (
-    <Tag ref={ref}>{isLoading && loadingFallback !== undefined ? loadingFallback : children}</Tag>
-  );
+  return <Tag ref={ref}>{content}</Tag>;
 }

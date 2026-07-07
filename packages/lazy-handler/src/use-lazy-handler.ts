@@ -13,8 +13,8 @@ const DOM_PRELOAD_EVENTS: Record<string, string> = {
 export function useLazyHandler<T extends Element>(
   loader: Loader,
   options: LazyHandlerOptions = {},
-): [(node: T | null) => void, (e: Event) => void, boolean] {
-  const { event = 'click', capture = false, preloadOn = 'none' } = options;
+): [(node: T | null) => void, (e: Event) => void, boolean, Error | null] {
+  const { event = 'click', capture = false, preloadOn = 'none', preventDefault = false, onError } = options;
   const strategies: PreloadStrategy[] = Array.isArray(preloadOn) ? preloadOn : [preloadOn];
   // Stable string key for the effect's dependency array. `strategies` is a
   // fresh array reference every render (options are usually passed as an
@@ -30,14 +30,17 @@ export function useLazyHandler<T extends Element>(
   const [node, setNode] = useState<T | null>(null);
   const ref = useCallback((el: T | null) => setNode(el), []);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
   const handlerRef = useRef<HandlerFn | null>(null);
   const loaderRef = useRef(loader);
+  const onErrorRef = useRef(onError);
   const loadingRef = useRef(false);
   // cancelledRef is set to true in effect cleanup so in-flight promises skip setState
   const cancelledRef = useRef(false);
 
-  // Keep loader ref current without triggering effects (safe in 'use client')
+  // Keep loader/onError refs current without triggering effects (safe in 'use client')
   loaderRef.current = loader;
+  onErrorRef.current = onError;
 
   // Shared by the real event (stub) and every preloadOn strategy (doPreload):
   // flips isLoading/loadingRef around the loader() call, regardless of what
@@ -46,6 +49,7 @@ export function useLazyHandler<T extends Element>(
   const runLoad = useCallback((onLoaded?: (fn: HandlerFn) => void) => {
     loadingRef.current = true;
     setIsLoading(true);
+    setError(null);
     loaderRef.current()
       .then((mod) => {
         loadingRef.current = false;
@@ -54,14 +58,22 @@ export function useLazyHandler<T extends Element>(
         setIsLoading(false);
         onLoaded?.(mod.default);
       })
-      .catch(() => {
+      .catch((err: unknown) => {
         loadingRef.current = false;
-        if (!cancelledRef.current) setIsLoading(false);
+        if (cancelledRef.current) return;
+        setIsLoading(false);
+        const normalized = err instanceof Error ? err : new Error(String(err));
+        setError(normalized);
+        onErrorRef.current?.(normalized);
       });
   }, []);
 
   const stub = useCallback((e: Event) => {
     e.stopImmediatePropagation();
+    // Must happen synchronously, before any await — the native default action
+    // (e.g. a form navigating away on 'submit') fires right after dispatch
+    // otherwise, regardless of whether the handler module has loaded yet.
+    if (preventDefault) e.preventDefault();
     if (handlerRef.current) {
       handlerRef.current(e);
       return;
@@ -78,7 +90,7 @@ export function useLazyHandler<T extends Element>(
       },
     });
     runLoad((fn) => fn(asyncEvent));
-  }, [runLoad]);
+  }, [runLoad, preventDefault]);
 
   useEffect(() => {
     const el = node;
@@ -145,5 +157,5 @@ export function useLazyHandler<T extends Element>(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [node, event, capture, strategiesKey, stub, runLoad]);
 
-  return [ref, stub, isLoading];
+  return [ref, stub, isLoading, error];
 }
