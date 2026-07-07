@@ -5,7 +5,7 @@ import { RemoteErrorBoundary } from './remote-error-boundary';
 
 type ErrorFallbackProp = ReactNode | ((error: Error) => ReactNode);
 
-interface RemoteComponentProps {
+export interface RemoteComponentProps {
   manifestUrl: string;
   expose: string;
   requiredVersion?: string;

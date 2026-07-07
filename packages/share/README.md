@@ -139,6 +139,34 @@ import { RemoteComponent, RemoteErrorBoundary } from '@chetand/share';
 </RemoteErrorBoundary>;
 ```
 
+### `createRemoteRegistry(manifestUrl, options?)`
+
+Binds a manifest URL once so call sites reference exposes by name instead of repeating the manifest URL string everywhere — useful once an app consumes several exposes from the same host.
+
+```tsx
+// app/remotes.ts
+import { createRemoteRegistry } from '@chetand/share';
+
+export const checkoutTeam = createRemoteRegistry('http://localhost:3001/share-manifest.json', {
+  hotReload: process.env.NODE_ENV !== 'production',
+});
+```
+
+```tsx
+'use client';
+import { checkoutTeam } from '../remotes';
+
+export function CartWidgetSlot() {
+  const { mount, loading, error } = checkoutTeam.useRemoteComponent('./CartWidget');
+  // ...same RemoteComponentState as useRemoteComponent, manifestUrl already applied
+}
+
+// or the declarative form:
+<checkoutTeam.RemoteComponent expose="./CartWidget" props={{ userId }} />;
+```
+
+`options` is the same `UseRemoteComponentOptions` (`hotReload`, `hotReloadInterval`) accepted by `useRemoteComponent` — set here as the registry's defaults, and overridable per call by passing options to `registry.useRemoteComponent(...)`.
+
 ### `loadManifest(url, signal?, retries?)`
 
 Fetch a manifest directly. Returns a cached promise (5-minute TTL). Re-fetches on failure without caching the error.

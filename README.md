@@ -53,7 +53,7 @@ The result: your handler JS is not downloaded until a user actually triggers the
 
 #### `useLazyHandler(loader, options?)`
 
-The core hook. Returns a `[ref, stub, isLoading]` tuple.
+The core hook. Returns a `[ref, stub, isLoading, error]` tuple.
 
 ```tsx
 'use client';
@@ -74,6 +74,10 @@ started by the real event or by a `preloadOn` strategy — and `false` otherwise
 once per successful load (the module is cached after that); a failed load resets it, so the next
 trigger can retry.
 
+`error` is `null` unless the loader promise rejected, in which case it holds the (normalized)
+`Error` and `onError` (if provided) has already been called with it. It clears again as soon as a
+retry starts loading.
+
 **Options**
 
 | Option      | Type                                                             | Default   | Description                                                     |
@@ -81,6 +85,8 @@ trigger can retry.
 | `event`     | `keyof HTMLElementEventMap`                                      | `'click'` | DOM event to intercept                                           |
 | `capture`   | `boolean`                                                        | `false`   | Use capture phase                                                 |
 | `preloadOn` | `'hover' \| 'focus' \| 'visible' \| 'idle' \| 'none'`, or an array of these | `'none'`  | Trigger an early prefetch before the user fires the real event. An array arms multiple strategies at once — whichever fires first wins. |
+| `preventDefault` | `boolean`                                                    | `false`   | Call `event.preventDefault()` synchronously on interception, before the handler module loads. Needed for events with a native default action (e.g. `submit`) — see `useLazyForm`. |
+| `onError`   | `(error: Error) => void`                                         | —         | Called when the loader promise rejects — cold load or preload alike. |
 
 Your handler module must export a default function:
 
@@ -125,11 +131,24 @@ import { Interactive } from '@chetand/lazy-handler';
 >
   <button>Notify me</button>
 </Interactive>;
+
+{
+  /* Handle a failed load */
+}
+<Interactive
+  on={{ click: () => import('./handlers/notify') }}
+  errorFallback={(error) => <span>Couldn't load: {error.message}</span>}
+  onError={(error) => analytics.track('handler-load-failed', { message: error.message })}
+>
+  <button>Notify me</button>
+</Interactive>;
 ```
 
 `loadingFallback` (optional) is rendered in place of `children` while the handler module is being
 fetched; the wrapping element (and its ref/listener) never changes — only the rendered content
-swaps. Omitting it reproduces the previous behavior exactly.
+swaps. Omitting it reproduces the previous behavior exactly. `errorFallback` (optional) works the
+same way for a failed load — a plain node or a `(error) => ReactNode` function — and `onError`
+(optional) fires on every failed load regardless of whether `errorFallback` is set.
 
 #### `withLazyHandlers(Component, handlers)`
 
@@ -147,14 +166,14 @@ const LazyButton = withLazyHandlers(Button, {
 <LazyButton>Submit</LazyButton>;
 ```
 
-The wrapped component always receives an `isLoading: boolean` prop alongside its handler prop
-(e.g. `onClick`), reflecting whether the click-triggered load is in flight:
+The wrapped component always receives `isLoading: boolean` and `error: Error | null` props
+alongside its handler prop (e.g. `onClick`), reflecting the state of the click-triggered load:
 
 ```tsx
-function Button({ isLoading, onClick }: ButtonProps) {
+function Button({ isLoading, error, onClick }: ButtonProps) {
   return (
     <button onClick={onClick} disabled={isLoading}>
-      {isLoading ? 'Loading...' : 'Submit'}
+      {isLoading ? 'Loading...' : error ? 'Retry' : 'Submit'}
     </button>
   );
 }
@@ -200,14 +219,20 @@ import { HydrationBoundary } from '@chetand/hydration';
 
 | Prop            | Type                | Default     | Description                                               |
 | --------------- | ------------------- | ----------- | --------------------------------------------------------- |
-| `strategy`      | `HydrationStrategy` | `'visible'` | When to hydrate (see table below)                         |
+| `strategy`      | `HydrationStrategy \| HydrationStrategy[]` | `'visible'` | When to hydrate (see table below). An array arms multiple strategies at once — whichever fires first wins. |
 | `fallback`      | `ReactNode`         | `null`      | Rendered while dehydrated, and reused as the `Suspense` fallback while `loader` is in flight |
 | `threshold`     | `number             | number[]`   | `0.1`                                                     | IntersectionObserver threshold — `visible` strategy only |
 | `rootMargin`    | `string`            | `'200px'`   | IntersectionObserver rootMargin — `visible` strategy only |
+| `interactionEvents` | `Array<keyof HTMLElementEventMap>` | `['pointerenter', 'focusin', 'touchstart']` | DOM events that trigger hydration — `interaction` strategy only |
 | `onHydrate`     | `() => void`        | —           | Fired once when hydration occurs                          |
+| `errorFallback` | `ReactNode \| ((error: Error) => ReactNode)` | — | Rendered instead of crashing the tree if `loader` rejects |
 | `children`      | `ReactNode`         | —           | Eagerly-bundled content. Mutually exclusive with `loader`. |
 | `loader`        | `() => Promise<{ default: ComponentType<P> }>` | — | Code-split content, dynamically imported once hydrated. Mutually exclusive with `children`. |
 | `componentProps`| `P`                 | —           | Props passed to the component resolved by `loader`.       |
+
+An array `strategy` hydrates on whichever strategy fires first — an OR condition evaluated by one boundary, e.g. `strategy={['visible', 'idle']}` — as opposed to nesting boundaries, which is an AND condition.
+
+By default `strategy="interaction"` hydrates on any pointer contact — `pointerenter`, `focusin`, or `touchstart`. Pass `interactionEvents` (e.g. `['click']`) to require a specific event instead.
 
 #### Code-splitting with `loader`
 
@@ -222,7 +247,7 @@ Passing `children` means whatever component you wrap is already statically impor
 />
 ```
 
-Internally this wraps `loader` in `React.lazy()` and renders it inside the same `Suspense`/`fallback` the boundary already uses — so if the chunk is still downloading by the time `hydrated` flips true, the same skeleton just stays up a little longer. `children` and `loader` are mutually exclusive (enforced at the type level — passing both, or neither, is a compile error). A rejected `loader` promise throws during render, same as any `React.lazy` component — wrap `<HydrationBoundary>` in your own `ErrorBoundary` if you want to handle load failures.
+Internally this wraps `loader` in `React.lazy()` and renders it inside the same `Suspense`/`fallback` the boundary already uses — so if the chunk is still downloading by the time `hydrated` flips true, the same skeleton just stays up a little longer. `children` and `loader` are mutually exclusive (enforced at the type level — passing both, or neither, is a compile error). A rejected `loader` promise throws during render, same as any `React.lazy` component — pass `errorFallback` to handle it declaratively (the boundary wraps its content in an internal error boundary), or wrap `<HydrationBoundary>` in your own `ErrorBoundary` if you'd rather handle it yourself.
 
 `withHydrationBoundary` (the HOC below) only supports the `children` pattern — it takes an already-imported `Component` reference, so there's nothing to code-split.
 
