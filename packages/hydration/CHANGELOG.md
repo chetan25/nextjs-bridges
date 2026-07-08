@@ -1,3 +1,9 @@
+## [@chetand/hydration-v2.1.0](https://github.com/chetan25/nextjs-bridges/compare/@chetand/hydration-v2.0.0...@chetand/hydration-v2.1.0) (2026-07-08)
+
+### Features
+
+* **hydration:** support strategy arrays, narrow interaction events, add errorFallback ([dd06a32](https://github.com/chetan25/nextjs-bridges/commit/dd06a328c2acafdcbf93d22f3671d0db7a5ac5ba))
+
 ## [@chetand/hydration-v2.0.0](https://github.com/chetan25/nextjs-bridges/compare/@chetand/hydration-v1.0.0...@chetand/hydration-v2.0.0) (2026-07-06)
 
 ### ⚠ BREAKING CHANGES

@@ -1,6 +1,6 @@
 {
   "name": "@chetand/hydration",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Declarative hydration boundaries for Next.js 15 — defer Client Component hydration until a chosen strategy fires",
   "license": "MIT",
   "repository": {
