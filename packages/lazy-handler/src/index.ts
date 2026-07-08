@@ -3,6 +3,7 @@ export { useLazyForm } from './use-lazy-form';
 export type { UseLazyFormOptions } from './use-lazy-form';
 export { Interactive } from './interactive';
 export { withLazyHandlers } from './hoc';
+export { isDataSaverOrSlowConnection } from './network-aware';
 export type {
   LazyHandlerOptions,
   HandlerFn,

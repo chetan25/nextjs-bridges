@@ -54,6 +54,7 @@ export function NotifyButton() {
 | `preloadOn` | `'hover' \| 'focus' \| 'visible' \| 'idle' \| 'none'`, or an array of these | `'none'`  | Trigger an early prefetch before the user fires the real event. An array arms multiple strategies at once — whichever fires first wins. |
 | `preventDefault` | `boolean`                                                    | `false`   | Call `event.preventDefault()` synchronously on interception, before the handler module loads. Needed for events with a native default action (e.g. `submit`) — see `useLazyForm` below. |
 | `onError`   | `(error: Error) => void`                                          | —         | Called when the loader promise rejects — cold load or preload alike. |
+| `respectConnection` | `boolean`                                                | `true`    | Skip `preloadOn` on Save-Data or a slow (`2g`/`slow-2g`) connection. The real trigger event is never skipped — only speculative preloading. No-ops (never skips) in browsers without the Network Information API (Firefox, Safari). |
 
 Your handler module must export a default function:
 
@@ -96,7 +97,7 @@ export default function submitSignup(event: SubmitEvent) {
 }
 ```
 
-`options` accepts the same `preloadOn` as `useLazyHandler`; `event` and `preventDefault` are fixed internally and can't be overridden.
+`options` accepts the same `preloadOn` and `respectConnection` as `useLazyHandler`; `event` and `preventDefault` are fixed internally and can't be overridden.
 
 ### `<Interactive>`
 
@@ -154,6 +155,23 @@ const LazyButton = withLazyHandlers(Button, {
 ```
 
 The wrapped component always receives `isLoading: boolean` and `error: Error | null` props alongside its handler prop (e.g. `onClick`), reflecting the state of the click-triggered load.
+
+## Performance: `preloadOn` vs. browser resource hints
+
+`preloadOn` is already a form of preloading — it triggers the same `import()` your real event would, just earlier, on a signal (hover, idle, visibility) that suggests the user is likely to need it soon. That's different from a browser resource hint like `<link rel="modulepreload">`: this library can't emit one for your handler, because `loader` is your own bundler-resolved `import('./handlers/notify')` — Turbopack/webpack rewrite that into their own chunk-loading call with a build-time-generated URL the library never sees. (Compare this to `@chetand/share`, which *can* inject `<link rel="modulepreload">` for its chunks, because it resolves those URLs itself from a manifest at runtime, rather than through a bundler-opaque `import()`.)
+
+If you want an actual resource hint in addition to (or instead of) `preloadOn`, add it to your own loader with your bundler's magic comment:
+
+```ts
+// handlers/notify.ts's loader, decorated for the bundler:
+() => import(/* webpackPrefetch: true */ './handlers/notify')
+```
+
+This asks the bundler to emit its own `<link rel="prefetch">` for that chunk wherever the containing module loads — independent of any `preloadOn` strategy. Check your exact Turbopack/Next.js version's support for this comment before relying on it; magic-comment support has historically lagged webpack's in Turbopack.
+
+### Network-aware preloading
+
+`preloadOn` respects the user's connection by default (`respectConnection: true`): on Save-Data or a slow (`2g`/`slow-2g`) connection, speculative preload strategies (hover/focus/idle/visible) are skipped so they don't compete with whatever's actually on the critical path. The real trigger event (the click, the submit) is **never** skipped — only the early, speculative fetch. Set `respectConnection: false` to always preload regardless of connection. This relies on the non-standard Network Information API (`navigator.connection`), which only Chromium-based browsers implement — in Firefox/Safari, `respectConnection` has no effect either way, since there's nothing to check.
 
 ## Gotchas
 

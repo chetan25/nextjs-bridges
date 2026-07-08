@@ -16,6 +16,8 @@ interface InteractiveProps<E extends ElementType = 'span'> {
   on: SingleEventLoader;
   children: ReactNode;
   preloadOn?: LazyHandlerOptions['preloadOn'];
+  /** Skip `preloadOn` on Save-Data or a slow connection. Default `true`. See `useLazyHandler`. */
+  respectConnection?: LazyHandlerOptions['respectConnection'];
   /** Rendered in place of children while the handler module is being fetched. */
   loadingFallback?: ReactNode;
   /** Rendered in place of children if the handler module fails to load. */
@@ -30,6 +32,7 @@ export function Interactive<E extends ElementType = 'span'>({
   on,
   children,
   preloadOn = 'none',
+  respectConnection,
   loadingFallback,
   errorFallback,
   onError,
@@ -49,7 +52,12 @@ export function Interactive<E extends ElementType = 'span'>({
 
   const [ref, , isLoading, error] = useLazyHandler(
     primaryLoader ?? (() => Promise.resolve({ default: () => {} })),
-    { event: primaryEvent ?? 'click', preloadOn, ...(onError ? { onError } : {}) },
+    {
+      event: primaryEvent ?? 'click',
+      preloadOn,
+      ...(onError ? { onError } : {}),
+      ...(respectConnection !== undefined ? { respectConnection } : {}),
+    },
   );
 
   let content = children;

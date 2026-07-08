@@ -4,6 +4,8 @@ import type { FormLoader, Loader, PreloadStrategy } from './types';
 
 export interface UseLazyFormOptions {
   preloadOn?: PreloadStrategy | PreloadStrategy[];
+  /** Skip `preloadOn` on Save-Data or a slow connection. Default `true`. See `useLazyHandler`. */
+  respectConnection?: boolean;
 }
 
 /**
@@ -28,6 +30,9 @@ export function useLazyForm<T extends HTMLFormElement = HTMLFormElement>(
     event: 'submit',
     preventDefault: true,
     preloadOn: options.preloadOn ?? 'none',
+    ...(options.respectConnection !== undefined
+      ? { respectConnection: options.respectConnection }
+      : {}),
   });
 
   return [ref, isLoading];

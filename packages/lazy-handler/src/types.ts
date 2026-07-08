@@ -18,6 +18,13 @@ export interface LazyHandlerOptions {
   preventDefault?: boolean;
   /** Called when the loader promise rejects — cold load or preload alike. */
   onError?: (error: Error) => void;
+  /**
+   * Skip `preloadOn` strategies on Save-Data or a slow (2g/slow-2g) connection,
+   * so speculative preloads don't compete with the actual critical path on
+   * constrained networks. The real trigger event is never skipped — only
+   * speculative preloading. Default `true`.
+   */
+  respectConnection?: boolean;
 }
 
 /** A submit handler loaded lazily — see `useLazyForm`. */

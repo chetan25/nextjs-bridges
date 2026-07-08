@@ -1,6 +1,7 @@
 'use client';
 import { useRef, useCallback, useEffect, useState } from 'react';
 import type { HandlerFn, Loader, LazyHandlerOptions, PreloadStrategy } from './types';
+import { isDataSaverOrSlowConnection } from './network-aware';
 
 // Map friendly preloadOn names to real DOM event names.
 // 'hover' is not a DOM event; browsers fire 'mouseenter'/'mouseover'.
@@ -14,7 +15,14 @@ export function useLazyHandler<T extends Element>(
   loader: Loader,
   options: LazyHandlerOptions = {},
 ): [(node: T | null) => void, (e: Event) => void, boolean, Error | null] {
-  const { event = 'click', capture = false, preloadOn = 'none', preventDefault = false, onError } = options;
+  const {
+    event = 'click',
+    capture = false,
+    preloadOn = 'none',
+    preventDefault = false,
+    onError,
+    respectConnection = true,
+  } = options;
   const strategies: PreloadStrategy[] = Array.isArray(preloadOn) ? preloadOn : [preloadOn];
   // Stable string key for the effect's dependency array. `strategies` is a
   // fresh array reference every render (options are usually passed as an
@@ -99,9 +107,11 @@ export function useLazyHandler<T extends Element>(
     cancelledRef.current = false;
 
     const doPreload = () => {
-      if (!handlerRef.current && !loadingRef.current) {
-        runLoad();
-      }
+      if (handlerRef.current || loadingRef.current) return;
+      // Only speculative preloading is skipped here — the real trigger event
+      // (the `stub` listener above) always runs the load regardless.
+      if (respectConnection && isDataSaverOrSlowConnection()) return;
+      runLoad();
     };
 
     el.addEventListener(event, stub, { capture });
@@ -155,7 +165,7 @@ export function useLazyHandler<T extends Element>(
       teardowns.forEach((fn) => fn());
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [node, event, capture, strategiesKey, stub, runLoad]);
+  }, [node, event, capture, strategiesKey, stub, runLoad, respectConnection]);
 
   return [ref, stub, isLoading, error];
 }
