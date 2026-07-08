@@ -1,3 +1,10 @@
+## [@chetand/lazy-handler-v1.2.0](https://github.com/chetan25/nextjs-bridges/compare/@chetand/lazy-handler-v1.1.0...@chetand/lazy-handler-v1.2.0) (2026-07-08)
+
+### Features
+
+* **lazy-handler:** add respectConnection to skip preloadOn on slow connections ([afb0b8d](https://github.com/chetan25/nextjs-bridges/commit/afb0b8dd311605b42088b9adadd595c411f94c2b))
+* **lazy-handler:** add useLazyForm, preventDefault option, error/onError surfacing ([29a8019](https://github.com/chetan25/nextjs-bridges/commit/29a8019c0aec49590450eaf7ac38c715d4a5300d))
+
 ## [@chetand/lazy-handler-v1.1.0](https://github.com/chetan25/nextjs-bridges/compare/@chetand/lazy-handler-v1.0.0...@chetand/lazy-handler-v1.1.0) (2026-07-06)
 
 ### Features
