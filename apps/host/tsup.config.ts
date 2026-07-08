@@ -1,8 +1,8 @@
 import { defineConfig } from 'tsup';
 import { resolve } from 'path';
 import { createRequire } from 'module';
-import { loadSharedDepDecisions, loadOwnVersions } from '@chetand/share/shared-dep-resolver';
-import { generateSharedDepShim } from '@chetand/share/shared-dep-shim-generator';
+import { loadSharedDepDecisions, loadOwnVersions } from '@nextjs-bridges/share/shared-dep-resolver';
+import { generateSharedDepShim } from '@nextjs-bridges/share/shared-dep-shim-generator';
 
 // tsup bundles this config file itself as ESM without a require() shim, so a
 // bare `require(dep)` fails at config-load time even though it works fine
@@ -55,7 +55,7 @@ export default defineConfig({
   // from before this plan, extended to cover every generic shared dep too.
   // Which *implementation* gets bundled (the real package, or a shim reading
   // window.__bridgeShared) is controlled entirely by esbuildOptions.alias below.
-  noExternal: [/react/, '@chetand/lazy-handler', ...GENERIC_SHARED_DEPS],
+  noExternal: [/react/, '@nextjs-bridges/lazy-handler', ...GENERIC_SHARED_DEPS],
   esbuildOptions(options) {
     options.alias = {
       ...options.alias,

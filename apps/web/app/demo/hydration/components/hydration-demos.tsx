@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import { HydrationBoundary, useHydrationState } from '@chetand/hydration';
+import { HydrationBoundary, useHydrationState } from '@nextjs-bridges/hydration';
 import { HeavyWidget } from './heavy-widget';
 // Type-only — erased at compile time, so it doesn't defeat the loader's code-splitting below.
 import type LazyHeavyWidgetComponent from './lazy-heavy-widget';

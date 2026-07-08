@@ -1,5 +1,5 @@
 import { createElement } from 'react';
-import { useLazyHandler } from '@chetand/lazy-handler/use-lazy-handler';
+import { useLazyHandler } from '@nextjs-bridges/lazy-handler/use-lazy-handler';
 
 export interface ProductCardProps {
   id: string;

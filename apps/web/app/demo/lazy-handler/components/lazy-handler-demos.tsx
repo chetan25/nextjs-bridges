@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import { Interactive, withLazyHandlers } from '@chetand/lazy-handler';
+import { Interactive, withLazyHandlers } from '@nextjs-bridges/lazy-handler';
 
 // --- HOC demo ---
 function PlainButton({ children, ...rest }: React.ButtonHTMLAttributes<HTMLButtonElement>) {

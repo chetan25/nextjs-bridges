@@ -18,7 +18,7 @@ export function buildSharedDepShimSource(dep: string, mod: Record<string, unknow
     `const mod = globalThis.__bridgeShared?.[${depKey}];`,
     `if (!mod) {`,
     `  throw new Error(`,
-    `    '@chetand/share: window.__bridgeShared[${depKey}] was not available when this chunk loaded. ' +`,
+    `    '@nextjs-bridges/share: window.__bridgeShared[${depKey}] was not available when this chunk loaded. ' +`,
     `      'Make sure <BridgeSharedDepsProvider shared={{ ${depKey}: ... }}> wraps the page before any remote component mounts.',`,
     `  );`,
     `}`,

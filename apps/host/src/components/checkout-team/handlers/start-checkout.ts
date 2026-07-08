@@ -1,4 +1,4 @@
-// Loaded lazily via @chetand/lazy-handler when the user hovers or clicks
+// Loaded lazily via @nextjs-bridges/lazy-handler when the user hovers or clicks
 // "Proceed to Checkout" in CartWidget. Simulates kicking off a real checkout
 // flow module — this demo only updates the button to show it fired.
 export default function startCheckout(event: Event): void {

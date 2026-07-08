@@ -8,17 +8,17 @@ export default function HomePage() {
         <ul>
           <li>
             <Link href="/demo/lazy-handler">
-              @chetand/lazy-handler — deferred event handlers
+              @nextjs-bridges/lazy-handler — deferred event handlers
             </Link>
           </li>
           <li>
             <Link href="/demo/hydration">
-              @chetand/hydration — declarative hydration strategies
+              @nextjs-bridges/hydration — declarative hydration strategies
             </Link>
           </li>
           <li>
             <Link href="/demo/share">
-              @chetand/share — runtime cross-app component sharing
+              @nextjs-bridges/share — runtime cross-app component sharing
             </Link>
           </li>
           <li>

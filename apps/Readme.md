@@ -2,7 +2,7 @@
 
 Three deployable apps live here. `web` is the **shell**; `host` and
 `storefront` are independently-built-and-deployed **remotes** whose UI is
-stitched into the shell at runtime via `@chetand/share` — a small,
+stitched into the shell at runtime via `@nextjs-bridges/share` — a small,
 manifest-based alternative to webpack Module Federation.
 
 | App | Port | Role |
@@ -25,7 +25,7 @@ The concrete example is `web`'s `/demo/ecommerce` route
 | Recommendations | `storefront` | `./PopularProductsPanel` | `public/popularproductspanel.chunk.js` | Shell's `/demo/ecommerce` page, sidebar |
 
 Each remote's `next.config.ts` calls `shareConfig({ name, baseUrl, exposes, shared })`
-(`@chetand/share/next-config-helper`), which writes `public/share-manifest.json` —
+(`@nextjs-bridges/share/next-config-helper`), which writes `public/share-manifest.json` —
 a map of expose name → chunk URL + version, plus the app's shared-dep
 versions. The shell never imports remote source; it only knows a manifest
 URL and an expose name:
@@ -68,14 +68,14 @@ tree never contains elements created by the remote's React instance.
   throws at mount time if a remote claims `external: true` but the global
   singleton isn't actually there.
 
-**`@chetand/lazy-handler` — bundled into every consumer, not shared.**
+**`@nextjs-bridges/lazy-handler` — bundled into every consumer, not shared.**
 Both `host` and `storefront` list it as a real `dependency`, and both
 `tsup.config.ts`s put it in `noExternal`, so a copy is compiled straight into
 `cartwidget.chunk.js`, `homewidget.chunk.js` (via `ProductCard`), etc. There's
 no cross-app singleton for it — each remote is free to be on a different
 version.
 
-**`@chetand/hydration` — shell-only, never shipped to a remote.**
+**`@nextjs-bridges/hydration` — shell-only, never shipped to a remote.**
 Only `apps/web` depends on it. `<HydrationBoundary>` wraps `<RemoteComponent>`
 calls from the *shell* side (deferring when a remote mounts at all); no
 remote package.json lists it, so it never ends up in a chunk.

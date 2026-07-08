@@ -1,6 +1,6 @@
 'use client';
-import { HydrationBoundary } from '@chetand/hydration';
-import { RemoteComponent } from '@chetand/share';
+import { HydrationBoundary } from '@nextjs-bridges/hydration';
+import { RemoteComponent } from '@nextjs-bridges/share';
 import { Header } from './components/header';
 import { Footer } from './components/footer';
 import { PanelSkeleton } from './components/panel-skeleton';

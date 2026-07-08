@@ -83,10 +83,10 @@ importers:
 
   apps/host:
     dependencies:
-      '@chetand/lazy-handler':
+      '@nextjs-bridges/lazy-handler':
         specifier: workspace:*
         version: link:../../packages/lazy-handler
-      '@chetand/share':
+      '@nextjs-bridges/share':
         specifier: workspace:*
         version: link:../../packages/share
       date-fns:
@@ -102,7 +102,7 @@ importers:
         specifier: ^18.3.0
         version: 18.3.1(react@18.3.1)
     devDependencies:
-      '@chetand/tsconfig':
+      '@nextjs-bridges/tsconfig':
         specifier: workspace:*
         version: link:../../packages/tsconfig
       '@types/react':
@@ -120,10 +120,10 @@ importers:
 
   apps/storefront:
     dependencies:
-      '@chetand/lazy-handler':
+      '@nextjs-bridges/lazy-handler':
         specifier: workspace:*
         version: link:../../packages/lazy-handler
-      '@chetand/share':
+      '@nextjs-bridges/share':
         specifier: workspace:*
         version: link:../../packages/share
       next:
@@ -136,7 +136,7 @@ importers:
         specifier: ^18.3.0
         version: 18.3.1(react@18.3.1)
     devDependencies:
-      '@chetand/tsconfig':
+      '@nextjs-bridges/tsconfig':
         specifier: workspace:*
         version: link:../../packages/tsconfig
       '@types/react':
@@ -154,13 +154,13 @@ importers:
 
   apps/web:
     dependencies:
-      '@chetand/hydration':
+      '@nextjs-bridges/hydration':
         specifier: workspace:*
         version: link:../../packages/hydration
-      '@chetand/lazy-handler':
+      '@nextjs-bridges/lazy-handler':
         specifier: workspace:*
         version: link:../../packages/lazy-handler
-      '@chetand/share':
+      '@nextjs-bridges/share':
         specifier: workspace:*
         version: link:../../packages/share
       date-fns:
@@ -176,7 +176,7 @@ importers:
         specifier: ^18.3.0
         version: 18.3.1(react@18.3.1)
     devDependencies:
-      '@chetand/tsconfig':
+      '@nextjs-bridges/tsconfig':
         specifier: workspace:*
         version: link:../../packages/tsconfig
       '@types/react':
@@ -201,7 +201,7 @@ importers:
         specifier: '>=18'
         version: 18.3.1(react@18.3.1)
     devDependencies:
-      '@chetand/tsconfig':
+      '@nextjs-bridges/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
       '@testing-library/jest-dom':
@@ -247,7 +247,7 @@ importers:
         specifier: '>=18'
         version: 18.3.1(react@18.3.1)
     devDependencies:
-      '@chetand/tsconfig':
+      '@nextjs-bridges/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
       '@testing-library/jest-dom':
@@ -293,7 +293,7 @@ importers:
         specifier: '>=18'
         version: 18.3.1(react@18.3.1)
     devDependencies:
-      '@chetand/tsconfig':
+      '@nextjs-bridges/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
       '@testing-library/jest-dom':

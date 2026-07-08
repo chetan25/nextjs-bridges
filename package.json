@@ -1,5 +1,5 @@
 {
-  "name": "@chetand/monorepo",
+  "name": "@nextjs-bridges/monorepo",
   "private": true,
   "license": "MIT",
   "packageManager": "pnpm@9.0.0",

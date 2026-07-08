@@ -1,6 +1,6 @@
 'use client';
 import type { ReactNode } from 'react';
-import { BridgeSharedDepsProvider } from '@chetand/share';
+import { BridgeSharedDepsProvider } from '@nextjs-bridges/share';
 import * as DateFns from 'date-fns';
 
 // Importing date-fns here (inside a 'use client' module) rather than in

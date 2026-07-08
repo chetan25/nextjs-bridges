@@ -1,5 +1,5 @@
-// Loaded lazily via @chetand/lazy-handler on hover of the "Categories" nav
-// item. Shell-owned (not a @chetand/share remote widget) — nav chrome is
+// Loaded lazily via @nextjs-bridges/lazy-handler on hover of the "Categories" nav
+// item. Shell-owned (not a @nextjs-bridges/share remote widget) — nav chrome is
 // the shell's own concern, same reasoning as <Header>/<Footer> themselves
 // not being remote components. Imperative DOM, same style as
 // apps/storefront's and apps/host's handlers.

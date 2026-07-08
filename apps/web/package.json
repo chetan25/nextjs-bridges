@@ -10,16 +10,16 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@chetand/hydration": "workspace:*",
-    "@chetand/lazy-handler": "workspace:*",
-    "@chetand/share": "workspace:*",
+    "@nextjs-bridges/hydration": "workspace:*",
+    "@nextjs-bridges/lazy-handler": "workspace:*",
+    "@nextjs-bridges/share": "workspace:*",
     "date-fns": "^3.6.0",
     "next": "^15.0.0",
     "react": "^18.3.0",
     "react-dom": "^18.3.0"
   },
   "devDependencies": {
-    "@chetand/tsconfig": "workspace:*",
+    "@nextjs-bridges/tsconfig": "workspace:*",
     "@types/react": "^18.3.0",
     "@types/react-dom": "^18.3.0",
     "typescript": "^5.4.0"

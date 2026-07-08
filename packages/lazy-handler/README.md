@@ -1,13 +1,13 @@
-# @chetand/lazy-handler
+# @nextjs-bridges/lazy-handler
 
 > Defer React event handler JS until first user interaction — Qwik-style O(1) hydration cost.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](../../LICENSE)
 
-Part of the [`bridges`](https://github.com/chetan25/nextjs-bridges) monorepo — see the [root README](https://github.com/chetan25/nextjs-bridges#readme) for how this fits alongside `@chetand/hydration` and `@chetand/share`, and `apps/web`'s `/demo/ecommerce` page for all three working together.
+Part of the [`bridges`](https://github.com/chetan25/nextjs-bridges) monorepo — see the [root README](https://github.com/chetan25/nextjs-bridges#readme) for how this fits alongside `@nextjs-bridges/hydration` and `@nextjs-bridges/share`, and `apps/web`'s `/demo/ecommerce` page for all three working together.
 
 ```bash
-pnpm add @chetand/lazy-handler
+pnpm add @nextjs-bridges/lazy-handler
 ```
 
 ## The problem
@@ -33,7 +33,7 @@ The core hook. Returns a `[ref, stub, isLoading, error]` tuple. `error` is `null
 
 ```tsx
 'use client';
-import { useLazyHandler } from '@chetand/lazy-handler';
+import { useLazyHandler } from '@nextjs-bridges/lazy-handler';
 
 export function NotifyButton() {
   const [ref] = useLazyHandler<HTMLButtonElement>(
@@ -71,7 +71,7 @@ export default function notify(event: Event) {
 
 ```tsx
 'use client';
-import { useLazyForm } from '@chetand/lazy-handler';
+import { useLazyForm } from '@nextjs-bridges/lazy-handler';
 
 export function SignupForm() {
   const [ref, isLoading] = useLazyForm(
@@ -104,7 +104,7 @@ export default function submitSignup(event: SubmitEvent) {
 A declarative wrapper that removes the need to manage refs manually. Renders as a `<span>` by default; use the `as` prop to change the element type.
 
 ```tsx
-import { Interactive } from '@chetand/lazy-handler';
+import { Interactive } from '@nextjs-bridges/lazy-handler';
 
 <Interactive on={{ click: () => import('./handlers/notify') }}>
   <button>Notify me</button>
@@ -143,7 +143,7 @@ import { Interactive } from '@chetand/lazy-handler';
 Higher-order component. Wraps an existing component without changing its JSX at the call site.
 
 ```tsx
-import { withLazyHandlers } from '@chetand/lazy-handler';
+import { withLazyHandlers } from '@nextjs-bridges/lazy-handler';
 import { Button } from './Button';
 
 const LazyButton = withLazyHandlers(Button, {
@@ -158,7 +158,7 @@ The wrapped component always receives `isLoading: boolean` and `error: Error | n
 
 ## Performance: `preloadOn` vs. browser resource hints
 
-`preloadOn` is already a form of preloading — it triggers the same `import()` your real event would, just earlier, on a signal (hover, idle, visibility) that suggests the user is likely to need it soon. That's different from a browser resource hint like `<link rel="modulepreload">`: this library can't emit one for your handler, because `loader` is your own bundler-resolved `import('./handlers/notify')` — Turbopack/webpack rewrite that into their own chunk-loading call with a build-time-generated URL the library never sees. (Compare this to `@chetand/share`, which *can* inject `<link rel="modulepreload">` for its chunks, because it resolves those URLs itself from a manifest at runtime, rather than through a bundler-opaque `import()`.)
+`preloadOn` is already a form of preloading — it triggers the same `import()` your real event would, just earlier, on a signal (hover, idle, visibility) that suggests the user is likely to need it soon. That's different from a browser resource hint like `<link rel="modulepreload">`: this library can't emit one for your handler, because `loader` is your own bundler-resolved `import('./handlers/notify')` — Turbopack/webpack rewrite that into their own chunk-loading call with a build-time-generated URL the library never sees. (Compare this to `@nextjs-bridges/share`, which *can* inject `<link rel="modulepreload">` for its chunks, because it resolves those URLs itself from a manifest at runtime, rather than through a bundler-opaque `import()`.)
 
 If you want an actual resource hint in addition to (or instead of) `preloadOn`, add it to your own loader with your bundler's magic comment:
 

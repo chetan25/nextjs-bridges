@@ -1,13 +1,13 @@
-# @chetand/hydration
+# @nextjs-bridges/hydration
 
 > Declarative hydration boundaries for Next.js 15 — defer Client Component hydration until a chosen strategy fires.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](../../LICENSE)
 
-Part of the [`bridges`](https://github.com/chetan25/nextjs-bridges) monorepo — see the [root README](https://github.com/chetan25/nextjs-bridges#readme) for how this fits alongside `@chetand/lazy-handler` and `@chetand/share`, and `apps/web`'s `/demo/ecommerce` page for all three working together.
+Part of the [`bridges`](https://github.com/chetan25/nextjs-bridges) monorepo — see the [root README](https://github.com/chetan25/nextjs-bridges#readme) for how this fits alongside `@nextjs-bridges/lazy-handler` and `@nextjs-bridges/share`, and `apps/web`'s `/demo/ecommerce` page for all three working together.
 
 ```bash
-pnpm add @chetand/hydration
+pnpm add @nextjs-bridges/hydration
 ```
 
 ## The problem
@@ -25,7 +25,7 @@ This is purely a React-level deferral. The component JS is still bundled; hydrat
 ### `<HydrationBoundary>`
 
 ```tsx
-import { HydrationBoundary } from '@chetand/hydration';
+import { HydrationBoundary } from '@nextjs-bridges/hydration';
 
 <HydrationBoundary
   strategy="visible"
@@ -99,7 +99,7 @@ A rejected `loader` promise throws during render, same as any `React.lazy` compo
 Reads the nearest boundary's hydration state and imperative trigger. Must be called inside a `<HydrationBoundary>` — most useful inside a `fallback` slot to place a "Load now" button.
 
 ```tsx
-import { useHydrationState } from '@chetand/hydration';
+import { useHydrationState } from '@nextjs-bridges/hydration';
 
 function ManualFallback() {
   const { hydrated, hydrateNow } = useHydrationState();
@@ -116,7 +116,7 @@ function ManualFallback() {
 HOC version. Wraps a component in a boundary without changing its usage.
 
 ```tsx
-import { withHydrationBoundary } from '@chetand/hydration';
+import { withHydrationBoundary } from '@nextjs-bridges/hydration';
 
 const LazyChart = withHydrationBoundary(Chart, {
   strategy: 'visible',

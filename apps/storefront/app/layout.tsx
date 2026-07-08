@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: '@chetand/share storefront app',
-  description: 'Storefront app exposing HomeWidget and PopularProductsPanel via @chetand/share',
+  title: '@nextjs-bridges/share storefront app',
+  description: 'Storefront app exposing HomeWidget and PopularProductsPanel via @nextjs-bridges/share',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

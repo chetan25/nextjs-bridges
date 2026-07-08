@@ -10,7 +10,7 @@ module.exports = {
       '@semantic-release/git',
       {
         assets: ['package.json', 'CHANGELOG.md'],
-        message: 'chore(release): @chetand/share ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}',
+        message: 'chore(release): @nextjs-bridges/share ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}',
       },
     ],
     '@semantic-release/github',

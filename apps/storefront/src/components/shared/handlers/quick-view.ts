@@ -1,4 +1,4 @@
-// Loaded lazily via @chetand/lazy-handler when the user hovers "Quick View"
+// Loaded lazily via @nextjs-bridges/lazy-handler when the user hovers "Quick View"
 // or the browser goes idle, whichever happens first (see ProductCard's
 // preloadOn: ['hover', 'idle']). Renders an imperative modal — no React
 // state — same style as ./add-to-cart.ts and apps/host's

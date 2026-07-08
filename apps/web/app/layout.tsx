@@ -4,7 +4,7 @@ import './globals.css';
 
 export const metadata: Metadata = {
   title: '@bridge demos',
-  description: 'Demo app for @chetand/lazy-handler, @chetand/hydration, and @chetand/share',
+  description: 'Demo app for @nextjs-bridges/lazy-handler, @nextjs-bridges/hydration, and @nextjs-bridges/share',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

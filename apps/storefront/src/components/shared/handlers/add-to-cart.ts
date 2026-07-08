@@ -1,4 +1,4 @@
-// Loaded lazily via @chetand/lazy-handler on first "Add to Cart" click.
+// Loaded lazily via @nextjs-bridges/lazy-handler on first "Add to Cart" click.
 // Publishes to window so apps/host's CartWidget (a separate React root,
 // a separate app) can react — see
 // apps/host/src/components/checkout-team/cart-widget.tsx, which listens

@@ -1,7 +1,7 @@
 export default function HostHomePage() {
   return (
     <main>
-      <h1>@chetand/share host</h1>
+      <h1>@nextjs-bridges/share host</h1>
       <p>
         This app exposes shared components via <code>/share-manifest.json</code>.
       </p>
