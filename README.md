@@ -87,6 +87,7 @@ retry starts loading.
 | `preloadOn` | `'hover' \| 'focus' \| 'visible' \| 'idle' \| 'none'`, or an array of these | `'none'`  | Trigger an early prefetch before the user fires the real event. An array arms multiple strategies at once — whichever fires first wins. |
 | `preventDefault` | `boolean`                                                    | `false`   | Call `event.preventDefault()` synchronously on interception, before the handler module loads. Needed for events with a native default action (e.g. `submit`) — see `useLazyForm`. |
 | `onError`   | `(error: Error) => void`                                         | —         | Called when the loader promise rejects — cold load or preload alike. |
+| `respectConnection` | `boolean`                                                | `true`    | Skip `preloadOn` on Save-Data or a slow (`2g`/`slow-2g`) connection — the real trigger event is never skipped. No-ops in browsers without the Network Information API (Firefox, Safari). |
 
 Your handler module must export a default function:
 
@@ -178,6 +179,12 @@ function Button({ isLoading, error, onClick }: ButtonProps) {
   );
 }
 ```
+
+### Performance: `preloadOn` vs. browser resource hints
+
+`preloadOn` triggers the same `import()` your real event would, just earlier. It can't emit a real `<link rel="modulepreload">` resource hint, because `loader` is your own bundler-resolved `import('./handlers/notify')` — the library never sees the build-time URL Turbopack/webpack generate for it (unlike `@chetand/share`, which resolves its chunk URLs itself at runtime and *can* inject that hint). For an actual resource hint, add your bundler's magic comment to your own loader: `import(/* webpackPrefetch: true */ './handlers/notify')`. Check your Turbopack/Next.js version's support for it — Turbopack's magic-comment support has historically lagged webpack's.
+
+`preloadOn` also respects the user's connection by default (`respectConnection: true`, on `useLazyHandler`/`useLazyForm`/`<Interactive>`): on Save-Data or a slow (`2g`/`slow-2g`) connection, speculative preloading is skipped so it doesn't compete with the actual critical path — the real trigger event is never skipped. This relies on the non-standard, Chromium-only Network Information API; it's a no-op (never skips) in Firefox/Safari.
 
 ### Gotchas
 
@@ -490,6 +497,49 @@ import { RemoteComponent, RemoteErrorBoundary } from '@chetand/share';
 ```
 
 `hotReload` (both here and on `useRemoteComponent`, below) polls the mounted expose's chunk URL and swaps in a rebuilt version without a page reload — see [Hot-reloading remote chunks](#hot-reloading-remote-chunks).
+
+#### `createRemoteRegistry(manifestUrl, options?)`
+
+Binds a manifest URL once so call sites reference exposes by name instead of repeating the manifest URL string everywhere — useful once an app consumes several exposes from the same host.
+
+```tsx
+// app/remotes.ts
+import { createRemoteRegistry } from '@chetand/share';
+
+export const checkoutTeam = createRemoteRegistry('http://localhost:3001/share-manifest.json', {
+  hotReload: process.env.NODE_ENV !== 'production',
+});
+
+// checkoutTeam.useRemoteComponent('./CartWidget')
+// <checkoutTeam.RemoteComponent expose="./CartWidget" props={{ userId }} />
+// checkoutTeam.preload('./CartWidget')
+```
+
+`options` is the same options object accepted by `useRemoteComponent` — set here as the registry's defaults, overridable per call.
+
+#### Preloading: warming the manifest → chunk waterfall
+
+Mounting a remote component for the first time is a sequential two-hop fetch — the manifest, then (only once that resolves) the chunk. Two tools shrink or eliminate that waterfall from the critical path:
+
+```tsx
+import { preloadRemoteComponent, RemoteManifestPreloadLink } from '@chetand/share';
+
+// Warm both hops ahead of an actual mount — fire-and-forget from a hover handler.
+<a href="/checkout" onMouseEnter={() => preloadRemoteComponent(manifestUrl, './CartWidget')}>
+  Checkout
+</a>;
+
+// Warm just the manifest (hop 1) as early as possible: render this in a
+// server-rendered layout/head so the browser's preload scanner picks it up
+// while parsing HTML, before any React code runs.
+<RemoteManifestPreloadLink manifestUrl="http://localhost:3001/share-manifest.json" />;
+```
+
+`preloadRemoteComponent` rejects the same way `useRemoteComponent` would (missing expose, network failure) — leave the promise unhandled if you don't care, `.catch()` it if you want to log a failed preload. `createRemoteRegistry`'s `registry.preload(exposeName)` does the same thing with the manifest URL already bound.
+
+`preloadRemoteComponent` also injects a deduped `<link rel="modulepreload">` for the resolved chunk URL, handing that fetch to the browser's own module preloader. Pass `{ fetchPriority: 'high' | 'low' | 'auto' }` as a third argument (or as a prop on `RemoteManifestPreloadLink`) to mark speculative/hover-triggered preloads as low-priority so they don't compete with the actual critical path. The underlying `injectModulePreloadLink(url, fetchPriority?)` is also exported directly.
+
+`preloadRemoteComponent` also respects the user's connection by default (`respectConnection: true`): on Save-Data or a slow (`2g`/`slow-2g`) connection it resolves immediately without fetching anything. This only affects `preloadRemoteComponent` itself — `useRemoteComponent`/`<RemoteComponent>` always load when they need to mount, regardless of connection. `RemoteManifestPreloadLink` has no equivalent option — it's a plain `<link>` meant for server-rendered HTML, and the server has no way to know the eventual client's connection.
 
 #### `loadManifest(url, signal?, retries?)`
 

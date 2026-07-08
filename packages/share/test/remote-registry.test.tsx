@@ -6,7 +6,12 @@ vi.mock('../src/use-remote-component', () => ({
   useRemoteComponent: vi.fn(),
 }));
 
+vi.mock('../src/preload-remote-component', () => ({
+  preloadRemoteComponent: vi.fn(),
+}));
+
 import { useRemoteComponent } from '../src/use-remote-component';
+import { preloadRemoteComponent } from '../src/preload-remote-component';
 
 function mockMount(container: HTMLElement) {
   const el = document.createElement('div');
@@ -65,6 +70,32 @@ describe('createRemoteRegistry', () => {
       './Button',
       undefined,
       { hotReload: false },
+    );
+  });
+
+  it('preload binds the manifest URL and delegates to preloadRemoteComponent', async () => {
+    vi.mocked(preloadRemoteComponent).mockResolvedValue(undefined);
+
+    const registry = createRemoteRegistry('http://localhost:3001/share-manifest.json');
+    await registry.preload('./CartWidget');
+
+    expect(preloadRemoteComponent).toHaveBeenCalledWith(
+      'http://localhost:3001/share-manifest.json',
+      './CartWidget',
+      undefined,
+    );
+  });
+
+  it('preload forwards options (e.g. fetchPriority) to preloadRemoteComponent', async () => {
+    vi.mocked(preloadRemoteComponent).mockResolvedValue(undefined);
+
+    const registry = createRemoteRegistry('http://localhost:3001/share-manifest.json');
+    await registry.preload('./CartWidget', { fetchPriority: 'high' });
+
+    expect(preloadRemoteComponent).toHaveBeenCalledWith(
+      'http://localhost:3001/share-manifest.json',
+      './CartWidget',
+      { fetchPriority: 'high' },
     );
   });
 });

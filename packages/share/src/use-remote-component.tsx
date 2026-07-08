@@ -5,6 +5,7 @@ import { loadChunk } from './chunk-loader';
 import { watchChunkForChanges } from './chunk-watcher';
 import { checkVersion } from './version-check';
 import { assertSharedDepsAvailable } from './shared-dep-guard';
+import { resolveExposeChunkUrl } from './resolve-chunk-url';
 import type { RemoteComponentState } from './types';
 
 export interface UseRemoteComponentOptions {
@@ -48,9 +49,7 @@ export function useRemoteComponent(
 
         assertSharedDepsAvailable(manifest.shared);
 
-        const chunkUrl = entry.chunk.startsWith('http')
-          ? entry.chunk
-          : `${manifest.baseUrl}${entry.chunk}`;
+        const chunkUrl = resolveExposeChunkUrl(manifest, exposeName);
 
         return loadChunk(chunkUrl).then((mod) => ({ mod, chunkUrl }));
       })

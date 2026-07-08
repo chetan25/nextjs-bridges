@@ -167,6 +167,71 @@ export function CartWidgetSlot() {
 
 `options` is the same `UseRemoteComponentOptions` (`hotReload`, `hotReloadInterval`) accepted by `useRemoteComponent` — set here as the registry's defaults, and overridable per call by passing options to `registry.useRemoteComponent(...)`.
 
+## Performance: warming the manifest → chunk waterfall
+
+Mounting a remote component for the first time is a **sequential** two-hop fetch: the manifest, then — only once that resolves and the chunk URL is known — the chunk itself. That waterfall sits squarely on the critical path for that widget's time-to-interactive. Two tools shrink or eliminate it:
+
+### `preloadRemoteComponent(manifestUrl, exposeName)`
+
+Warms both hops ahead of when the component actually needs to mount, so the real mount resolves from cache instead of paying the waterfall at render time. `loadManifest`/`loadChunk` are already cached by URL — this just does that same work early.
+
+```tsx
+import { preloadRemoteComponent } from '@chetand/share';
+
+<a
+  href="/checkout"
+  onMouseEnter={() => {
+    preloadRemoteComponent('http://localhost:3001/share-manifest.json', './CartWidget');
+  }}
+>
+  Checkout
+</a>;
+```
+
+Fire-and-forget from a hover/focus handler, or call it in an effect for an above-the-fold widget you already know you'll render. It rejects the same way `useRemoteComponent` would (missing expose, network failure) — if you don't care about a failed preload, leave the promise unhandled; if you want to log it, `.catch()` it. `createRemoteRegistry`'s `registry.preload(exposeName)` does the same thing with the manifest URL already bound.
+
+`preloadRemoteComponent` also injects a `<link rel="modulepreload">` for the resolved chunk URL (deduped — calling it again for the same URL is a no-op), handing that fetch to the browser's own module preloader instead of relying solely on `import()`'s ad-hoc timing. Pass `{ fetchPriority: 'high' | 'low' | 'auto' }` as a third argument to set `fetchpriority` on that link — useful to mark a preload as low-priority when it's speculative (e.g. hover) so it doesn't compete with resources actually on the critical path:
+
+```tsx
+preloadRemoteComponent('http://localhost:3001/share-manifest.json', './CartWidget', {
+  fetchPriority: 'low',
+});
+```
+
+The underlying injector is also exported directly, for warming a chunk URL you already have without going through a manifest:
+
+```ts
+import { injectModulePreloadLink } from '@chetand/share';
+
+injectModulePreloadLink('http://localhost:3001/button.chunk.js', 'low');
+```
+
+`preloadRemoteComponent` also respects the user's connection by default (`respectConnection: true`): on Save-Data or a slow (`2g`/`slow-2g`) connection it resolves immediately without fetching anything, so a speculative hover-triggered preload doesn't compete with the actual critical path. This only affects `preloadRemoteComponent` itself — `useRemoteComponent`/`<RemoteComponent>` always load when they genuinely need to mount, regardless of connection. Pass `{ respectConnection: false }` to always preload. This relies on the non-standard, Chromium-only Network Information API and is a no-op (never skips) in Firefox/Safari.
+
+### `<RemoteManifestPreloadLink manifestUrl="..." />`
+
+Renders a `<link rel="preload" as="fetch">` for the manifest URL. Render it in a layout or other server-rendered ancestor — it has no client-only behavior, so Next.js includes it in the server-rendered HTML, and the browser's preload scanner starts fetching the manifest while parsing that HTML, before any React code runs at all:
+
+```tsx
+// app/layout.tsx
+import { RemoteManifestPreloadLink } from '@chetand/share';
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en">
+      <head>
+        <RemoteManifestPreloadLink manifestUrl="http://localhost:3001/share-manifest.json" />
+      </head>
+      <body>{children}</body>
+    </html>
+  );
+}
+```
+
+This only warms the manifest (hop 1) — the chunk URL isn't known until the manifest resolves, so pair it with `preloadRemoteComponent` once you know which expose you'll actually mount. It also accepts `fetchPriority` (e.g. `<RemoteManifestPreloadLink manifestUrl={url} fetchPriority="high" />`) for a manifest you know is needed for an above-the-fold widget.
+
+**This component can't be connection-aware.** It's a plain `<link>` tag meant for server-rendered (often statically cached) HTML — by the time it's part of the response, the server has no way to know the eventual client's connection state, so there's no `respectConnection` option here. If you specifically want to skip preloading on slow connections, use `preloadRemoteComponent` (a client-side call, where `navigator.connection` is actually available) instead of this component.
+
 ### `loadManifest(url, signal?, retries?)`
 
 Fetch a manifest directly. Returns a cached promise (5-minute TTL). Re-fetches on failure without caching the error.

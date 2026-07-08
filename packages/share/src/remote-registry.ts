@@ -4,6 +4,8 @@ import { useRemoteComponent } from './use-remote-component';
 import type { UseRemoteComponentOptions } from './use-remote-component';
 import { RemoteComponent } from './remote-component';
 import type { RemoteComponentProps } from './remote-component';
+import { preloadRemoteComponent } from './preload-remote-component';
+import type { PreloadRemoteComponentOptions } from './preload-remote-component';
 import type { RemoteComponentState } from './types';
 
 export interface RemoteRegistry {
@@ -15,6 +17,8 @@ export interface RemoteRegistry {
   ): RemoteComponentState;
   /** Same as the top-level `<RemoteComponent>`, with `manifestUrl` already bound. */
   RemoteComponent(props: Omit<RemoteComponentProps, 'manifestUrl'>): ReturnType<typeof RemoteComponent>;
+  /** Same as the top-level `preloadRemoteComponent`, with `manifestUrl` already bound. */
+  preload(exposeName: string, options?: PreloadRemoteComponentOptions): Promise<void>;
 }
 
 /**
@@ -36,6 +40,9 @@ export function createRemoteRegistry(
     },
     RemoteComponent(props) {
       return createElement(RemoteComponent, { manifestUrl, ...props });
+    },
+    preload(exposeName, options) {
+      return preloadRemoteComponent(manifestUrl, exposeName, options);
     },
   };
 }
