@@ -1,3 +1,10 @@
+## [@chetand/share-v2.1.0](https://github.com/chetan25/nextjs-bridges/compare/@chetand/share-v2.0.0...@chetand/share-v2.1.0) (2026-07-08)
+
+### Features
+
+* **share:** add createRemoteRegistry to bind a manifest URL once ([e24bf02](https://github.com/chetan25/nextjs-bridges/commit/e24bf02889b9ea2a8b765c5772daf46afa8c993a))
+* **share:** fix manifest->chunk waterfall with preloading and resource hints ([9964edd](https://github.com/chetan25/nextjs-bridges/commit/9964edd2d0bc1515d6e8faaa5f84d6c28a1849bf))
+
 ## [@chetand/share-v2.0.0](https://github.com/chetan25/nextjs-bridges/compare/@chetand/share-v1.0.0...@chetand/share-v2.0.0) (2026-07-06)
 
 ### ⚠ BREAKING CHANGES
